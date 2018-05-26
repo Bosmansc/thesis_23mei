@@ -89,22 +89,59 @@ object Table {
       "                                 WHERE stockName = 'AAPL UW Equity'" +
       "                           ")
 
-    CCI_2_table.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double)].print()
+    CCI_2_table.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double)]
 
 
 
 // Stochastic Oscillator
-// %K kunnen berekenen, nu 3 day moving average nodig over K -> via join mss mogelijk
 
-    val stoch = tableEnv.sqlQuery("SELECT (( lastPrice - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 5 PRECEDING AND CURRENT ROW) )/" +
-      "                           ( MAX(high) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 5 PRECEDING AND CURRENT ROW) - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 5 PRECEDING AND CURRENT ROW) )) as K " +
+    val stoch = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, 100*((( lastPrice - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/" +
+      "                           ( MAX(high) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) ))) as K " +
       "                           FROM stockTable ")
+
+    val stoch_table = stoch.toAppendStream[( Timestamp,String, Double,Double)]
+
+    tableEnv.registerDataStream("stoch_table_2", stoch_table, 'stockTime, 'stockName, 'lastPrice,'K, 'UserActionTime.proctime )
+
+    val stoch_table_2 = tableEnv.sqlQuery("SELECT stockTime, stockName,lastPrice, K, ( AVG(K)OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) ) as D "  +
+      "                                    FROM stoch_table_2" +
+      "                                    WHERE stockName = 'AAPL UW Equity'")
+
+    stoch_table_2.toAppendStream[(Timestamp, String, Double, Double, Double)]
+
+
 
 // Relative Strength Index
 
-    
+    val rsi = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, " +
+      "                          ROUND(SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - lastPrice,4) as lastPriceLag," +
+      "                          ROUND(2* lastPrice - (SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) as difference," +
 
-// Money Flow Indicator
+      "                          CASE WHEN  ROUND(2* lastPrice - (SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) > 0 THEN " +
+      "                          ROUND(2* lastPrice - (SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) ELSE 0 END AS posDifference, " +
+
+      "                           CASE WHEN  ROUND(2* lastPrice - (SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) < 0 THEN " +
+      "                           ROUND(2* lastPrice - (SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) ELSE 0 END AS negDifference" +
+
+      "                           FROM stockTable" +
+      "                           ")
+
+    val rsi_table = rsi.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double)]
+
+    tableEnv.registerDataStream("rsi_table_1", rsi_table, 'stockTime, 'stockName, 'lastPrice, 'lastPriceLag, 'difference, 'posDifference, 'negDifference, 'UserActionTime.proctime )
+
+    val rsi_table_1 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, posDifference, negDifference, " +
+      "                                  100 - 100/( 1 + ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )) as RSI"  +
+
+    "                                    FROM rsi_table_1" +
+    "                                    WHERE stockName = 'AAPL UW Equity'")
+
+
+    val rsi_table_2 = rsi_table_1.toAppendStream[(Timestamp, String, Double, Double, Double, Double)].print()
+
+
+
+    // Money Flow Indicator
 
 
 
