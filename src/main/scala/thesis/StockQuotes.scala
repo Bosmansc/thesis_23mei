@@ -37,6 +37,6 @@ object StockQuotes {
 
 }
 
-case class StockQuotes(stockName: String, stockTime: Timestamp, open: Double, high: Double, low: Double, lastPrice: Double, number: Double, volume: Double){
+case class StockQuotes(stockName: String, stockTime: Timestamp, priceOpen: Double, high: Double, low: Double, lastPrice: Double, number: Double, volume: Double){
 
 }
