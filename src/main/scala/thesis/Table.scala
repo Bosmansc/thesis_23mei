@@ -21,7 +21,6 @@ object Table {
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
 
-
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", "localhost:9092")
     properties.setProperty("zookeeper.connect", "localhost:2181")
@@ -31,36 +30,15 @@ object Table {
       .map(StockQuotes.fromString(_))
 
 
-    val test = FeatureCalculation.calculation(stream)
-    test.print()
+//    val test = FeatureCalculation.calculation(stream)
+
 
 // stream to table
 
     tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
 
 
-
-// Financial measure Bollinger Bands,
-
-    val BB = tableEnv.sqlQuery("SELECT stockName , ROUND(AVG(lastPrice) " +
-      "                           OVER ( PARTITION BY stockName" +
-      "                           ORDER BY UserActionTime" +
-      "                           ROWS BETWEEN 20 PRECEDING AND CURRENT ROW),3) as BB_middleBand," +
-
-                                  "ROUND( AVG(lastPrice)" +
-      "                           OVER ( PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 20 PRECEDING AND CURRENT ROW),3) + " +
-      "                           2*(STDDEV_SAMP(lastPrice) OVER (PARTITION BY stockName " +
-      "                           ORDER BY UserActionTime" +
-      "                           ROWS BETWEEN 20 PRECEDING AND CURRENT ROW)) as BB_upperBound," +
-
-      "                           ROUND( AVG(lastPrice)" +
-      "                           OVER ( PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 20 PRECEDING AND CURRENT ROW),3) - " +
-      "                           2*(STDDEV_SAMP(lastPrice) OVER (PARTITION BY stockName " +
-      "                           ORDER BY UserActionTime" +
-      "                           ROWS BETWEEN 20 PRECEDING AND CURRENT ROW)) as BB_lowerBound" +
-
-      "                           FROM stockTable" +
-      "                           ")
+    // de volgende fin measures nog in klassen steken
 
 
 // Commodity Channel Index, gewerkt met table -> stream -> table -> stream, mag dit?
@@ -118,7 +96,7 @@ object Table {
       "                          ROUND(2* lastPrice - (SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) ELSE 0 END AS posDifference, " +
 
       "                           CASE WHEN  ROUND(2* lastPrice - (SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) < 0 THEN " +
-      "                           ROUND(2* lastPrice - (SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) ELSE 0 END AS negDifference" +
+      "                           -ROUND(2* lastPrice - (SUM(lastPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) ELSE 0 END AS negDifference" +
 
       "                           FROM stockTable" +
       "                           ")
@@ -128,17 +106,100 @@ object Table {
     tableEnv.registerDataStream("rsi_table_1", rsi_table, 'stockTime, 'stockName, 'lastPrice, 'lastPriceLag, 'difference, 'posDifference, 'negDifference, 'UserActionTime.proctime )
 
     val rsi_table_1 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, posDifference, negDifference, " +
+      "                                 ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) ) as RS," +
+
       "                                  100 - 100/( 1 + ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )) as RSI"  +
 
     "                                    FROM rsi_table_1" +
     "                                    WHERE stockName = 'AAPL UW Equity'")
 
 
-    val rsi_table_2 = rsi_table_1.toAppendStream[(Timestamp, String, Double, Double, Double, Double)]
+    val rsi_table_2 = rsi_table_1.toAppendStream[(Timestamp, String, Double, Double, Double,  Double,Double)]
 
 
 
-    // Money Flow Indicator
+// Money Flow Indicator
+
+    val mfi = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, (high + low + lastPrice)/3 as typicalPrice, ((high + low + lastPrice)/3)*volume as moneyFlow" +
+      "                         FROM stockTable ")
+
+
+
+    val mfi_tbl = mfi.toAppendStream[(Timestamp, String, Double,Double, Double)]
+
+    tableEnv.registerDataStream("mfi_table_1", mfi_tbl, 'stockTime, 'stockName, 'lastPrice, 'typicalPrice, 'moneyFlow, 'UserActionTime.proctime )
+
+    val mfi_tbl_1 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, " +
+
+      "                               CASE WHEN ROUND(2*moneyFlow - (SUM(moneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) > 0 THEN " +
+      "                               ROUND( 2*moneyFlow - (SUM(moneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) ,6) ELSE 0 END as posMoneyFlow, " +
+
+      "                               CASE WHEN ROUND(2*moneyFlow - (SUM(moneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) < 0 THEN " +
+      "                               -ROUND( 2*moneyFlow - (SUM(moneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) ,6) ELSE 0 END as negMoneyFlow" +
+
+      "                               FROM mfi_table_1 ")
+
+    val mfi_tbl_2 = mfi_tbl_1.toAppendStream[(Timestamp, String, Double, Double, Double)]
+
+    tableEnv.registerDataStream("mfi_table_2", mfi_tbl_2, 'stockTime, 'stockName, 'lastPrice, 'posMoneyFlow, 'negMoneyFlow, 'UserActionTime.proctime )
+
+    val mfi_tbl_3 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, " +
+
+      "                               ( AVG(posMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/" +
+      "                               ( AVG(negMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) ) as moneyRatio," +
+
+      "                               100 - 100/( 1 + ( (AVG(posMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/" +
+      "                               ( AVG(negMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) ) ) )as moneyFlowIndex" +
+
+
+      "                               FROM mfi_table_2 " +
+      "                               WHERE stockName = 'ABT UN Equity'")
+
+    val mfi_stream = mfi_tbl_3.toAppendStream[(Timestamp, String, Double, Double, Double)]
+
+
+
+
+// Chaikin Accumulation/Distribution
+
+   //   [(Close  -  Low) - (High - Close)] /(High - Low) = Money Flow Multiplier
+
+
+    val chai = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, volume, ( (lastPrice - low) - (high - lastPrice) )/( high - low) as moneyFlowMultiplier," +
+      "                           CASE WHEN (high-low) > 0 THEN ( ( (lastPrice - low) - (high - lastPrice) )/( high - low) ) * volume ELSE 0 END as moneyFlowVolume" +
+      "                            FROM stockTable ")
+
+    val chai_tbl = chai.toAppendStream[(Timestamp, String, Double,Double, Double, Double)]
+
+
+
+    tableEnv.registerDataStream("chai_tbl_1", chai_tbl, 'stockTime, 'stockName, 'lastPrice, 'volume, 'moneyFlowMultiplier, 'moneyFlowVolume, 'UserActionTime.proctime )
+
+    val chai_table_2 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, moneyFlowMultiplier, moneyFlowVolume, " +
+
+      "                                  ( SUM(moneyFlowVolume) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 21 PRECEDING AND CURRENT ROW) )/" +
+      "                                  ( SUM(volume) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 21 PRECEDING AND CURRENT ROW) ) as chaikinMoneyFlow" +
+      "                                   FROM chai_tbl_1 " +
+      "                                   WHERE stockName = 'ABT UN Equity'")
+
+    val chai_stream = chai_table_2.toAppendStream[(Timestamp, String, Double,Double, Double, Double)]
+
+
+
+// William' %R
+
+    // %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
+
+    val wilR = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, " +
+      "                           -100 * ( MAX(high) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) - lastPrice )/" +
+      "                           ( MAX(high) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 21 PRECEDING AND CURRENT ROW) ) as williamsR " +
+      "                           FROM stockTable" +
+      "                           WHERE stockName = 'ABBV UN Equity' ")
+
+    val wilR_stream = wilR.toAppendStream[(Timestamp, String, Double,Double)]
+
+    wilR_stream.print()
+
 
 
 
