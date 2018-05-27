@@ -14,14 +14,31 @@ object FeatureCalculation {
   env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
 
-  def  calculation (stream: DataStream[StockQuotes]): DataStream[BolBandtypes] = {
+  def  calculation (stream: DataStream[StockQuotes]): DataStream[WMATypes] = {
 
     // hier alle streams joinen naar één stream = basetable (nog oplossing zoeken voor mergen)
 
-    val SMA10 = SMA.calculateSMA(stream, tableEnv, env)
+    val sma10 = SMA.calculateSMA(stream, tableEnv, env)
 
-    val BB = BolBand.calculateBolBand(stream, tableEnv, env)
-    BolBand.calculateBolBand(stream, tableEnv, env)
+    val bb = BolBand.calculateBolBand(stream, tableEnv, env)
+
+    val cci = CCI.calculateCCI(stream, tableEnv, env)
+
+    val stoch = Stoch.calculateStoch(stream, tableEnv, env)
+
+    val rsi = RSI.calculateRSI(stream, tableEnv, env)
+
+    val mfi = MFI.calculateMFI(stream, tableEnv, env)
+
+    val chaikin = Chaikin.calculateChaikin(stream, tableEnv, env)
+
+    val williamR = WilliamR.calculateWilliamR(stream, tableEnv, env)
+
+
+    val wma = WMA.calculateWMA(stream, tableEnv, env)
+    WMA.calculateWMA(stream, tableEnv, env)
+
+
 
 
     /* merge all the streams this way:
