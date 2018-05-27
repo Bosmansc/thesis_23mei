@@ -30,19 +30,15 @@ object Table {
     val stream: DataStream[StockQuotes] = env.addSource(new FlinkKafkaConsumer08[String]("stock", new SimpleStringSchema(), properties))
       .map(StockQuotes.fromString(_))
 
+
+    val test = FeatureCalculation.calculation(stream)
+    test.print()
+
 // stream to table
 
     tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
 
 
-// financial measure SMA:
-
-    val SMA10 = tableEnv.sqlQuery("SELECT  stockName , stockTime, ROUND(AVG(lastPrice) " +
-      "                           OVER ( PARTITION BY stockName" +
-      "                           ORDER BY UserActionTime" +
-      "                           ROWS BETWEEN 10 PRECEDING AND CURRENT ROW),4) as SMA10" +
-      "                           FROM stockTable" +
-      "                           ")
 
 // Financial measure Bollinger Bands,
 
@@ -80,6 +76,7 @@ object Table {
       "                          FROM stockTable")
 
     val CCI_1_table = CCI_1.toAppendStream[( Timestamp,String, Double,Double, Double)]
+
 
     tableEnv.registerDataStream("CCI_1_table", CCI_1_table, 'stockTime, 'stockName, 'typicalPrice, 'numerator_CCI, 'deviation, 'UserActionTime.proctime )
 
@@ -137,53 +134,11 @@ object Table {
     "                                    WHERE stockName = 'AAPL UW Equity'")
 
 
-    val rsi_table_2 = rsi_table_1.toAppendStream[(Timestamp, String, Double, Double, Double, Double)].print()
+    val rsi_table_2 = rsi_table_1.toAppendStream[(Timestamp, String, Double, Double, Double, Double)]
 
 
 
     // Money Flow Indicator
-
-
-
-
-// merging 2 sql-tables
-
-    tableEnv.registerTable("SMA10", SMA10)
-   // tableEnv.registerTable("SMA101", SMA101)
-    tableEnv.registerTable("CCI_1", CCI_1)
-
-
-
-
-/*
-    Table result = SMA10.join(SMA101).where("")
-
-      .where("a = d && ltime >= rtime - 5.minutes && ltime < rtime + 10.minutes")
-      .select("a, b, e, ltime");
-*/
-/*
-    val merg = tableEnv.sqlQuery("SELECT *" +
-      "                           FROM SMA10 s,  CCI_1 t" +
-    "                             WHERE s.stockTime = t.stockTime")
-*/
-
-// Transform table to stream and print
-
-
- //   SMA10.toRetractStream[(String, Double)].print()
-    val sma_tbl = SMA10.toRetractStream[(String,Timestamp, Double)]
-    val sma_tbl2 = SMA10.toAppendStream[(String,Timestamp, Double)]
-
-    tableEnv.registerDataStream("sma_tbl2", sma_tbl2, 'stockName, 'stockTime, 'SMA10 , 'UserActionTime.proctime)
-
-    /*
-    val SMA10_tbl = tableEnv.sqlQuery("SELECT stockName, stockTime,  SMA10 ROUND(AVG(SMA10)  OVER ( PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 20 PRECEDING AND CURRENT ROW),4) as SMA20"  +
-      "                           FROM sma_tbl2" +
-      "                           ")
-*/
-
- // SMA10_tbl.toRetractStream[(String, Double)].print()
- // SMA10_tbl.toAppendStream[(String,Timestamp, Double)].print()
 
 
 
