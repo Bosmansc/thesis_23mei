@@ -3,6 +3,7 @@ package thesis
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
 
+case class StockQuotes(stockName: String, stockTime: Timestamp, priceOpen: Double, high: Double, low: Double, lastPrice: Double, number: Double, volume: Double)
 
 object StockQuotes {
 
@@ -37,6 +38,3 @@ object StockQuotes {
 
 }
 
-case class StockQuotes(stockName: String, stockTime: Timestamp, priceOpen: Double, high: Double, low: Double, lastPrice: Double, number: Double, volume: Double){
-
-}
