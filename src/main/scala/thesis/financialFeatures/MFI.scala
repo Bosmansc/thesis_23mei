@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class MFITypes(stockTime: Timestamp, stockName: String, lastPrice:Double, moneyRatio: Double, moneyFlowIndex: Double )
+case class MFITypes(stockTime: Timestamp, stockName: String, lastPrice:Double, moneyFlowIndex: Double, MFI_signal: Int)
 
 object MFI {
 
@@ -59,7 +59,35 @@ object MFI {
       "                               FROM mfi_table_2 " )
 
     val mfi_stream = mfi_tbl_3.toAppendStream[(Timestamp, String, Double, Double, Double)]
-    mfi_tbl_3.toAppendStream[(MFITypes)]
+
+    tableEnv.registerDataStream("mfi_signal", mfi_stream, 'stockTime, 'stockName, 'lastPrice, 'moneyRatio, 'moneyFlowIndex, 'UserActionTime.proctime )
+
+
+    /*
+    Buy if MFI (t) < 20
+    Sell if MFI (t) > 80
+    Hold otherwise
+    1 = BUY, 2 = SELL, 0 = HOLD
+
+    remark: work with direction (same as RSI) and very few 1 and 2
+
+     */
+
+    //table to check outcome:
+    val mfi_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, moneyFlowIndex," +
+      "                                       CASE WHEN moneyFlowIndex < 20 THEN 1 " +
+      "                                       WHEN moneyFlowIndex > 80  THEN 2 ELSE 0 END as MFI_signal" +
+      "                                       FROM mfi_signal" +
+      "                                        ")
+
+    // signal:
+    val mfi_signal = tableEnv.sqlQuery("SELECT stockTime, stockName," +
+      "                                       CASE WHEN moneyFlowIndex < 20 THEN 1 " +
+      "                                       WHEN moneyFlowIndex > 80  THEN 2 ELSE 0 END as MFI_signal" +
+      "                                       FROM mfi_signal ")
+
+
+    mfi_signal_table.toAppendStream[(MFITypes)]
 
   }
 

@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class RSITypes(stockTime: Timestamp, stockName: String, lastPrice:Double, posDifference: Double, negDifference: Double, RS: Double, RSI:Double )
+case class RSITypes(stockTime: Timestamp, stockName: String,  RSI_signal: Int )
 
 object RSI {
 
@@ -49,9 +49,38 @@ object RSI {
 
       "                                   FROM rsi_table_1")
 
+    val RSIsignal_table = rsi_table_1.toAppendStream[( Timestamp, String, Double, Double, Double, Double, Double)]
 
-    val rsi_table_2 = rsi_table_1.toAppendStream[(RSITypes)]
-    rsi_table_1.toAppendStream[(RSITypes)]
+    tableEnv.registerDataStream("RSIsignal_table", RSIsignal_table, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS , 'RSI, 'UserActionTime.proctime )
+
+    /*
+    Buy if RSI (t) < 30
+    Sell if RSI (t) > 70
+    Hold otherwise
+    1 = BUY, 2 = SELL, 0 = HOLD
+
+    remark: a lot of ones and twos after each other! (and too much signals in general) -> direction and signal function?
+
+     */
+
+    // big table to check the outcome:
+    val RSI_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName , lastPrice, ROUND(RSI,2)," +
+      "                                       CASE WHEN RSI < 30 THEN 1 " +
+      "                                       WHEN RSI > 70  THEN 2 ELSE 0 END as RSI_signal  " +
+
+      "                                       FROM  RSIsignal_table" +
+      "                                       WHERE stockName = 'ABT UN Equity' ")
+
+   // RSI_signal_table.toAppendStream[(RSITypes)]
+
+    // signal:
+    val RSI_signal = tableEnv.sqlQuery("SELECT stockTime, stockName ," +
+      "                                       CASE WHEN RSI < 30 THEN 1 " +
+      "                                       WHEN RSI > 70  THEN 2 ELSE 0 END as RSI_signal  " +
+
+      "                                       FROM  RSIsignal_table")
+
+    RSI_signal.toAppendStream[(RSITypes)]
 
   }
 

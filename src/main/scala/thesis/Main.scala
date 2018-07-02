@@ -3,10 +3,11 @@ package thesis
 import java.util.Properties
 
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.scala.{DataStream, _}
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer08
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema
 import org.apache.flink.table.api.TableEnvironment
+
 
 
 object Main {
@@ -27,10 +28,13 @@ object Main {
     val stream: DataStream[StockQuotes] = env.addSource(new FlinkKafkaConsumer08[String]("stock", new SimpleStringSchema(), properties))
       .map(StockQuotes.fromString(_))
 
-   // tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
 
     val test = FeatureCalculation.calculation(stream)
     test.print()
+
+    //////////////////////////////////////////////////////////////////////////////////////:
+
+
 
 
 
