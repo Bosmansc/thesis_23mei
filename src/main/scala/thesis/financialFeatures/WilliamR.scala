@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class WilliamRTypes(stockTime: Timestamp, stockName: String, lastPrice:Double, williamsR: Double )
+case class WilliamRTypes(stockTime: Timestamp, stockName: String, willR_signal :Int )
 
 object WilliamR {
 
@@ -34,7 +34,45 @@ object WilliamR {
       "                           FROM stockTable")
 
     val wilR_stream = wilR.toAppendStream[(Timestamp, String, Double,Double)]
-    wilR.toAppendStream[(WilliamRTypes)]
+
+    // lag table:
+    tableEnv.registerDataStream("willR_lag", wilR_stream, 'stockTime, 'stockName, 'lastPrice,  'williamsR, 'UserActionTime.proctime )
+
+    val willR_lag = tableEnv.sqlQuery("SELECT stockTime, stockName,  lastPrice, williamsR, SUM(williamsR) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - williamsR as williamsRLag" +
+      "                             " +
+      "                             FROM willR_lag ")
+
+
+    val willR_lag_table = willR_lag.toAppendStream[(Timestamp, String, Double, Double, Double)]
+
+    /*
+     Buy if %R(t - 1) >= -80 and %R(t) < -80
+     Sell if %R(t - 1) <= -20 and %R(t) > -20
+     Hold otherwise
+     1 = BUY, 2 = SELL, 0 = HOLD
+      */
+
+    tableEnv.registerDataStream("willR_big_table", willR_lag_table, 'stockTime, 'stockName, 'lastPrice,  'williamsR, 'williamsRLag, 'UserActionTime.proctime )
+
+    //table to check outcome:
+    val willR_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, ROUND(williamsR,2), ROUND(williamsRLag,2)," +
+      "                                       CASE WHEN williamsRLag >= -80 AND williamsR < -80 THEN 1 " +
+      "                                       WHEN williamsRLag <= -20 AND williamsR > -20 THEN 2 ELSE 0 END as willR_signal" +
+      "                                       FROM willR_big_table" +
+      "                                       WHERE stockName = 'ABBV UN Equity'" +
+      "                                        ")
+
+
+    // signal: (14 iterations needed for useful results)
+    val willR_signal = tableEnv.sqlQuery("SELECT stockTime, stockName," +
+      "                                       CASE WHEN williamsRLag >= -80 AND williamsR < -80 THEN 1 " +
+      "                                       WHEN williamsRLag <= -20 AND williamsR > -20  THEN 2 ELSE 0 END as willR_signal" +
+      "                                       FROM willR_big_table" +
+      //"                                       WHERE stockName = 'AAPL UW Equity'" +
+      "                                        ")
+
+
+    willR_signal.toAppendStream[(WilliamRTypes)]
 
 
   }

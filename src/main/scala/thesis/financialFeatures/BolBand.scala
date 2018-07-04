@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class BolBandtypes(stockTime: Timestamp, stockName: String,  BB_signal:Int )
+case class BolBandtypes(stockTime: Timestamp, stockName: String,  lastPriceLag: Double, BB_signal:Int )
 
 object BolBand {
 
@@ -106,15 +106,15 @@ object BolBand {
 
     // table to check the outcome:
 
-    val SMA_signal_table_big = tableEnv.sqlQuery("SELECT stockTime, stockName , lastPrice, ROUND(BB_middleBand,2), ROUND(BB_upperBound,2), ROUND(BB_lowerBound,2), ROUND(lastPriceLag,2) , ROUND(BB_upperBoundLag,2), ROUND(BB_lowerBoundLag,2)," +
+    val BB_signal_table_big = tableEnv.sqlQuery("SELECT stockTime, stockName , lastPrice, ROUND(BB_middleBand,2), ROUND(BB_upperBound,2), ROUND(BB_lowerBound,2), ROUND(lastPriceLag,2) , ROUND(BB_upperBoundLag,2), ROUND(BB_lowerBoundLag,2)," +
       "                                       CASE WHEN lastPriceLag <= BB_upperBoundLag AND lastPrice > BB_upperBound  THEN 1 " +
       "                                       WHEN lastPriceLag >= BB_lowerBoundLag AND lastPrice < BB_lowerBound THEN 2 ELSE 0 END as BB_signal  " +
 
       "                                       FROM  bol_band_table_signal" +
       "                                       WHERE stockName = 'ABT UN Equity' ")
 
-    // signal:
-    val SMA_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName," +
+    // signal: (lastPriceLag included for response variable calculation in FeatureCalculation)
+    val BB_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPriceLag," +
       "                                       CASE WHEN lastPriceLag <= BB_upperBoundLag AND lastPrice > BB_upperBound  THEN 1 " +
       "                                       WHEN lastPriceLag >= BB_lowerBoundLag AND lastPrice < BB_lowerBound THEN 2 ELSE 0 END as BB_signal  " +
 
@@ -122,7 +122,7 @@ object BolBand {
 
 
 
-    SMA_signal_table.toAppendStream[(BolBandtypes)]
+    BB_signal_table.toAppendStream[(BolBandtypes)]
 
   }
 

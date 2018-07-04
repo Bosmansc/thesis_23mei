@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class MFITypes(stockTime: Timestamp, stockName: String, lastPrice:Double, moneyFlowIndex: Double, MFI_signal: Int)
+case class MFITypes(stockTime: Timestamp, stockName: String, lastPrice:Double, MFI_signal: Int)
 
 object MFI {
 
@@ -80,14 +80,14 @@ object MFI {
       "                                       FROM mfi_signal" +
       "                                        ")
 
-    // signal:
-    val mfi_signal = tableEnv.sqlQuery("SELECT stockTime, stockName," +
+    // signal: (with lastPrice to use in baseTable)
+    val mfi_signal = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice," +
       "                                       CASE WHEN moneyFlowIndex < 20 THEN 1 " +
       "                                       WHEN moneyFlowIndex > 80  THEN 2 ELSE 0 END as MFI_signal" +
-      "                                       FROM mfi_signal ")
+      "                                       FROM mfi_signal" )
 
 
-    mfi_signal_table.toAppendStream[(MFITypes)]
+    mfi_signal.toAppendStream[(MFITypes)]
 
   }
 

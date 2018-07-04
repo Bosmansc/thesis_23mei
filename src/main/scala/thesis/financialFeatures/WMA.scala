@@ -125,11 +125,18 @@ object WMA {
 
     tableEnv.registerDataStream("wma_table", lag11_stream, 'stockTime, 'stockName, 'lastPrice, 'lastPriceLag1, 'lastPriceLag2,'lastPriceLag3,'lastPriceLag4,'lastPriceLag5, 'lastPriceLag6, 'lastPriceLag7, 'lastPriceLag8, 'lastPriceLag9, 'lastPriceLag10, 'lastPriceLag11, 'UserActionTime.proctime )
 
-    val wma_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, ( 10*lastPrice + 9* lastPriceLag1 + 8* lastPriceLag2 + 7*lastPriceLag3 + 6*lastPriceLag4 + 5*lastPriceLag5 + 4* lastPriceLag6 + 3*lastPriceLag7 + 2* lastPriceLag8 + lastPriceLag9 )/55 as WMA" +
+    val wma_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, ( 10*lastPrice + 9* lastPriceLag1 + 8* lastPriceLag2 + 7*lastPriceLag3 + 6*lastPriceLag4 + 5*lastPriceLag5 + 4* lastPriceLag6 + 3*lastPriceLag7 + 2* lastPriceLag8 + lastPriceLag9 )/55 as WMA10" +
       "                                FROM wma_table")
 
     val wma_stream = wma_table.toAppendStream[(Timestamp, String, Double, Double)]
     wma_table.toAppendStream[(WMATypes)]
+
+    /*
+    Buy if WMA10 (t - 1) <= WMA100 (t - 1) and WMA10 (t) > WMA100 (t)
+    Sell if WMA10 (t - 1) >= WMA100 (t - 1) and WMA10 (t) < WMA100 (t)
+    Hold otherwise
+    1 = BUY, 2 = SELL, 0 = HOLD
+     */
 
 
   }

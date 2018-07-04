@@ -28,11 +28,12 @@ object Main {
     val stream: DataStream[StockQuotes] = env.addSource(new FlinkKafkaConsumer08[String]("stock", new SimpleStringSchema(), properties))
       .map(StockQuotes.fromString(_))
 
+    // from which value a stock is considered to rise/fall: (recommended values: 0.01, 0.1, 0.2, 0.5, 0.75)
+    val threshold = 0.1
 
-    val test = FeatureCalculation.calculation(stream)
+    val test = FeatureCalculation.calculation(stream,threshold)
     test.print()
 
-    //////////////////////////////////////////////////////////////////////////////////////:
 
 
 
