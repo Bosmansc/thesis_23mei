@@ -26,15 +26,15 @@ object Stoch {
 
     // Stochastic Oscillator
 
-    val stoch = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, 100*((( lastPrice - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/" +
-      "                           ( MAX(high) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) ))) as K " +
+    val stoch = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, 100*((( lastPrice - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) )/" +
+      "                           ( MAX(high) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) ))) as K " +
       "                           FROM stockTable ")
 
     val stoch_table = stoch.toAppendStream[( Timestamp,String, Double,Double)]
 
     tableEnv.registerDataStream("stoch_table_2", stoch_table, 'stockTime, 'stockName, 'lastPrice,'K, 'UserActionTime.proctime )
 
-    val stoch_table_2 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, K, ( AVG(K)OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) ) as D "  +
+    val stoch_table_2 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, K, ( AVG(K)OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) ) as D "  +
       "                                    FROM stoch_table_2" )
 
     val lagStoch = stoch_table_2.toAppendStream[( Timestamp,String, Double,Double, Double)]

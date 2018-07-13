@@ -34,13 +34,14 @@ object MFI {
 
     tableEnv.registerDataStream("mfi_table_1", mfi_tbl, 'stockTime, 'stockName, 'lastPrice, 'typicalPrice, 'moneyFlow, 'UserActionTime.proctime )
 
+    // negative of positive MF is defined by looking at the typical price rise or decline, not the MoneFlow!!
     val mfi_tbl_1 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, " +
 
-      "                               CASE WHEN ROUND(2*moneyFlow - (SUM(moneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) > 0 THEN " +
-      "                               ROUND( 2*moneyFlow - (SUM(moneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) ,6) ELSE 0 END as posMoneyFlow, " +
+      "                               CASE WHEN ROUND(2*typicalPrice - (SUM(typicalPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) > 0 THEN " +
+      "                               ROUND( moneyFlow,6) ELSE 0 END as posMoneyFlow, " +
 
-      "                               CASE WHEN ROUND(2*moneyFlow - (SUM(moneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) < 0 THEN " +
-      "                               -ROUND( 2*moneyFlow - (SUM(moneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) ,6) ELSE 0 END as negMoneyFlow" +
+      "                               CASE WHEN ROUND(2*typicalPrice - (SUM(typicalPrice) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)),6) < 0 THEN " +
+      "                               ROUND( moneyFlow  ,6) ELSE 0 END as negMoneyFlow" +
 
       "                               FROM mfi_table_1 ")
 
@@ -50,11 +51,11 @@ object MFI {
 
     val mfi_tbl_3 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, " +
 
-      "                               ( AVG(posMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/" +
-      "                               ( AVG(negMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) ) as moneyRatio," +
+      "                               ( AVG(posMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )/" +
+      "                               ( AVG(negMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) ) as moneyRatio," +
 
-      "                               100 - 100/( 1 + ( (AVG(posMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/" +
-      "                               ( AVG(negMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) ) ) )as moneyFlowIndex" +
+      "                               100 - 100/( 1 + ( (AVG(posMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )/" +
+      "                               ( AVG(negMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) ) ) )as moneyFlowIndex" +
 
       "                               FROM mfi_table_2 " )
 

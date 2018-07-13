@@ -60,7 +60,7 @@ public class StockExchange {
         Producer<String, String> producer = new KafkaProducer<>(props);
 
         // initialises delay between minutes:
-        int lag = 5000;
+        int lag = 2000;
 
         StockQuote stockQuote;
 
@@ -85,7 +85,7 @@ public class StockExchange {
 
                         System.out.println(s.getStockName() + ", " + stockQuote);
 
-                        producer.send(new ProducerRecord<String, String>("stock", s.getStockName() + ", " + stockQuote));
+                        producer.send(new ProducerRecord<String, String>("stock5", s.getStockName() + ", " + stockQuote));
 
                         s.getStockQuotes().remove(stockQuote);
                     }

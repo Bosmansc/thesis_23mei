@@ -109,7 +109,15 @@ object FeatureCalculation {
         "                                     SMA10.stockName = bb.stockName AND bb.stockName = cci.stockName AND cci.stockName = stoch.stockName " +
         "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
         "                                     AND chaikin.stockName = williamR.stockName" +
-        "                                     AND SMA10.stockName ='ABBV UN Equity'")
+        "                                     " +
+        "                                      AND williamR.stockName ='AAPL UW Equity' " +
+        "                                   " )
+      /*  "" +
+        "                                     AND CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  0.1 THEN 1                         " +
+        "                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -0.1 THEN 2 ELSE 0 END > 0 ")*/
+
+
+
 
       baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, Int)]
 
