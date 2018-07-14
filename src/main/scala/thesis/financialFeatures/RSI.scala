@@ -53,6 +53,19 @@ object RSI {
 
     tableEnv.registerDataStream("RSIsignal_table", RSIsignal_table, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS , 'RSI, 'UserActionTime.proctime )
 
+    val rsi_table_2 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, posDifference, negDifference, " +
+      "                                 RS, SUM(RS) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - RS as RSlag" +
+
+      "                                   FROM RSIsignal_table")
+
+    val RSIsignal_table2 = rsi_table_2.toAppendStream[( Timestamp, String, Double, Double, Double, Double, Double)]
+
+    tableEnv.registerDataStream("RSIsignal_table2", RSIsignal_table2, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS , 'RSI, 'UserActionTime.proctime )
+
+
+
+
+
     /*
     Buy if RSI (t) < 30
     Sell if RSI (t) > 70
@@ -71,7 +84,7 @@ object RSI {
       "                                       FROM  RSIsignal_table" +
       "                                       WHERE stockName = 'ABT UN Equity' ")
 
-   // RSI_signal_table.toAppendStream[(RSITypes)]
+    // RSI_signal_table.toAppendStream[(RSITypes)]
 
     // signal:
     val RSI_signal = tableEnv.sqlQuery("SELECT stockTime, stockName ," +
