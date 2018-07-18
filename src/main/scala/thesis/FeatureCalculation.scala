@@ -110,7 +110,7 @@ object FeatureCalculation {
         "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
         "                                     AND chaikin.stockName = williamR.stockName" +
         "                                     " +
-        "                                      AND williamR.stockName ='AAPL UW Equity' " +
+       // "                                      AND williamR.stockName ='AAPL UW Equity' " +
         "                                   " )
       /*  "" +
         "                                     AND CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  0.1 THEN 1                         " +

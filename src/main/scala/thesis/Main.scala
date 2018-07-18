@@ -1,21 +1,19 @@
 package thesis
 
-import java.sql.Timestamp
 import java.util.Properties
 
-import org.apache.flink.core.fs.FileSystem.WriteMode
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{DataStream, _}
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer08
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema
-import org.apache.flink.table.api.scala._
-import org.apache.flink.table.api.{Table, TableEnvironment}
-import org.apache.flink.table.sinks.CsvTableSink
+import org.apache.flink.table.api.TableEnvironment
 
 
 
 object Main {
   def main(args: Array[String]) {
+
+    Batch.modelSvm
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setParallelism(1)
@@ -28,12 +26,12 @@ object Main {
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", "localhost:9092")
     properties.setProperty("zookeeper.connect", "localhost:2181")
-    properties.setProperty("group.id", "stock6")
+    properties.setProperty("group.id", "stock11")
 
-    val stream: DataStream[StockQuotes] = env.addSource(new FlinkKafkaConsumer08[String]("stock6", new SimpleStringSchema(), properties))
+    val stream: DataStream[StockQuotes] = env.addSource(new FlinkKafkaConsumer08[String]("stock11", new SimpleStringSchema(), properties))
       .map(StockQuotes.fromString(_))
 
-
+/*
     // from which value a stock is considered to rise/fall: (recommended values: 0.01, 0.1, 0.2, 0.5, 0.75)
     val threshold = 0.1
 
@@ -43,23 +41,20 @@ object Main {
     val table1: Table = tableEnv.fromDataStream(test)
 
 
-  //  test.print()
+    test.print()
 
     // nog loop maken die na aantal sec stopt, https://stackoverflow.com/questions/18358212/scala-looping-for-certain-duration werkt niet
 
     // work with if: if return is to low: then write to sink
       table1.writeToSink(
         new CsvTableSink(
-          "C:\\Users\\ceder\\Flink\\batch2",                             // output path
+          "C:\\Users\\ceder\\Flink\\batchBig",                             // output path
           fieldDelim = ",",                 // optional: delimit files by '|'
           numFiles = 1,                     // optional: write to a single file
-          writeMode = WriteMode.OVERWRITE)) // optional: override existing files*/
+          writeMode = WriteMode.OVERWRITE)) // optional: override existing files
 
 
 
-    env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
-
-    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
 
     // Relative Strength Index
 
@@ -162,8 +157,10 @@ object Main {
 
     RSIsignal_5.print()
 
-
+*/
 
     env.execute()
+
+
   }
 }
