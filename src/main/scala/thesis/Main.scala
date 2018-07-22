@@ -44,6 +44,7 @@ object Main {
     val table1: Table = tableEnv.fromDataStream(test)
 
     test.print()
+    test
 
     // nog loop maken die na aantal sec stopt, https://stackoverflow.com/questions/18358212/scala-looping-for-certain-duration werkt niet
 

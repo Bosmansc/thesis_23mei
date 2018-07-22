@@ -71,13 +71,15 @@ object FeatureCalculation {
 
     // ************** merge all signals to BASETABLE and add responseVariable based on threshold: **************
 
+    val threshold = threshold
+
     //voorlopig zonder threshold: THRESHOLD VIA DOLLAR TEKEN DOEN!
     val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
       "                                     ' SMA: ', SMA10.SMA_signal, ' BB: ', bb.BB_signal, ' CCI: ', cci.CCI_signal, ' stoch: ', stoch.stoch_signal, ' RSI: ', rsi.RSI_signal, ' MFI: ', mfi.MFI_signal," +
       "                                     ' Chaikin: ', chaikin.chaikin_signal, ' williamR: ', williamR.willR_signal," +
 
-      "                                     CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  0.05 THEN 1 " +
-      "                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -0.05 THEN 2 ELSE 0 END as responseVariable" +
+      s"                                     CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  $threshold THEN 1 " +
+      s"                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -$threshold THEN 2 ELSE 0 END as responseVariable" +
 
       "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
 
@@ -124,177 +126,6 @@ object FeatureCalculation {
                                     """.stripMargin)
 
     BaseTableBatch2.toAppendStream[(Timestamp, String, Double,Double, Int, Int,  Int, Int,  Int,  Int,  Int,  Int, Int)]
-    /*
-
-
-
-
-        if (threshold <= 0.01) {
-
-          val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
-            "                                     SMA10.SMA_signal, bb.BB_signal, cci.CCI_signal, stoch.stoch_signal, rsi.RSI_signal, mfi.MFI_signal," +
-            "                                     chaikin.chaikin_signal, williamR.willR_signal," +
-
-            "                                     CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  0.01 THEN 1 " +
-            "                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -0.01 THEN 2 ELSE 0 END as responseVariable" +
-
-            "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
-
-            "                                     WHERE SMA10.stockTime = bb.stockTime AND bb.stockTime = cci.stockTime AND cci.stockTime = stoch.stockTime" +
-            "                                     AND stoch.stockTime = rsi.stockTime AND rsi.stockTime = mfi.stockTime AND mfi.stockTime = chaikin.stockTime" +
-            "                                     AND chaikin.stockTime = williamR.stockTime AND" +
-            "                                     SMA10.stockName = bb.stockName AND bb.stockName = cci.stockName AND cci.stockName = stoch.stockName " +
-            "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
-            "                                     AND chaikin.stockName = williamR.stockName")
-
-          baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, Int)]
-
-
-
-        } else if (0.01 < threshold && threshold <= 0.1) {
-
-          val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
-            "                                     ' SMA: ', SMA10.SMA_signal, ' BB: ', bb.BB_signal, ' CCI: ', cci.CCI_signal, ' stoch: ', stoch.stoch_signal, ' RSI: ', rsi.RSI_signal, ' MFI: ', mfi.MFI_signal," +
-            "                                     ' Chaikin: ', chaikin.chaikin_signal, ' williamR: ', williamR.willR_signal," +
-
-            "                                     CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  0.1 THEN 1 " +
-            "                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -0.1 THEN 2 ELSE 0 END as responseVariable" +
-
-            "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
-
-            "                                     WHERE SMA10.stockTime = bb.stockTime AND bb.stockTime = cci.stockTime AND cci.stockTime = stoch.stockTime" +
-            "                                     AND stoch.stockTime = rsi.stockTime AND rsi.stockTime = mfi.stockTime AND mfi.stockTime = chaikin.stockTime" +
-            "                                     AND chaikin.stockTime = williamR.stockTime AND" +
-            "                                     SMA10.stockName = bb.stockName AND bb.stockName = cci.stockName AND cci.stockName = stoch.stockName " +
-            "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
-            "                                     AND chaikin.stockName = williamR.stockName" +
-            "                                     " +
-           // "                                      AND williamR.stockName ='AAPL UW Equity' " +
-            "                                   " )
-          /*  "" +
-            "                                     AND CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  0.1 THEN 1                         " +
-            "                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -0.1 THEN 2 ELSE 0 END > 0 ")*/
-
-
-
-
-          baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, Int)]
-         val BaseTableBatch =  baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, Int)]
-
-          tableEnv.registerDataStream("BaseTableBatch", BaseTableBatch, 'stockTime, 'stockName, 'lastPrice,'lastPriceLag, 'SMAS, 'SMA_signal, 'BB, 'BB_signal, 'CCI, 'CCI_signal, 'stoch, 'stoch_signal, 'RSI, 'RSI_signal, 'MFI, 'MFI_signal,
-                                                 'Chaikin, 'chaikin_signal, 'williamR, 'willR_signal, 'UserActionTime.proctime )
-
-          val BaseTable = tableEnv.sqlQuery(
-            """
-                                          |SELECT stockTime, stockName, lastPrice, lastPriceLag,
-                                          | SUM(SMA_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - SMA_signal,
-                                          | SUM(BB_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - BB_signal,
-                                          | SUM(CCI_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - CCI_signal,
-                                          | SUM(stoch_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - stoch_signal,
-                                          | SUM(chaikin_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - chaikin_signal,
-                                          | SUM(willR_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - willR_signal,
-                                          | SUM(RSI_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - RSI_signal,
-                                          | SUM(MFI_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - MFI_signal,
-
-                                          |
-                                          |case when _9 = 2 OR _9 = 1 then 1 ELSE -1 END
-                                          |FROM BaseTableBatch
-
-                                        """.stripMargin)
-
-
-
-
-        } else if (threshold <= 0.2 && threshold > 0.1) {
-
-          val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
-            "                                     'SMA: ', SMA10.SMA_signal, 'BB: ', bb.BB_signal, 'CCI: ', cci.CCI_signal, 'stoch: ', stoch.stoch_signal, 'RSI: ', rsi.RSI_signal, 'MFI: ', mfi.MFI_signal," +
-            "                                     'Chaikin: ', chaikin.chaikin_signal, 'williamR: ', williamR.willR_signal," +
-
-            "                                     CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  0.2 THEN 1 " +
-            "                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -0.2 THEN 2 ELSE 0 END as responseVariable" +
-
-            "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
-
-            "                                     WHERE SMA10.stockTime = bb.stockTime AND bb.stockTime = cci.stockTime AND cci.stockTime = stoch.stockTime" +
-            "                                     AND stoch.stockTime = rsi.stockTime AND rsi.stockTime = mfi.stockTime AND mfi.stockTime = chaikin.stockTime" +
-            "                                     AND chaikin.stockTime = williamR.stockTime AND" +
-            "                                     SMA10.stockName = bb.stockName AND bb.stockName = cci.stockName AND cci.stockName = stoch.stockName " +
-            "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
-            "                                     AND chaikin.stockName = williamR.stockName" +
-            "                                     AND SMA10.stockName ='ABBV UN Equity'")
-
-          baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, Int)]
-
-
-        } else if (threshold <= 0.5 && threshold > 0.2) {
-
-          val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
-            "                                     'SMA: ', SMA10.SMA_signal, 'BB: ', bb.BB_signal, 'CCI: ', cci.CCI_signal, 'stoch: ', stoch.stoch_signal, 'RSI: ', rsi.RSI_signal, 'MFI: ', mfi.MFI_signal," +
-            "                                     'Chaikin: ', chaikin.chaikin_signal, 'williamR: ', williamR.willR_signal," +
-
-            "                                     CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  0.5 THEN 1 " +
-            "                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -0.5 THEN 2 ELSE 0 END as responseVariable" +
-
-            "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
-
-            "                                     WHERE SMA10.stockTime = bb.stockTime AND bb.stockTime = cci.stockTime AND cci.stockTime = stoch.stockTime" +
-            "                                     AND stoch.stockTime = rsi.stockTime AND rsi.stockTime = mfi.stockTime AND mfi.stockTime = chaikin.stockTime" +
-            "                                     AND chaikin.stockTime = williamR.stockTime AND" +
-            "                                     SMA10.stockName = bb.stockName AND bb.stockName = cci.stockName AND cci.stockName = stoch.stockName " +
-            "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
-            "                                     AND chaikin.stockName = williamR.stockName")
-
-          baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, Int)]
-
-        }
-
-        else if (threshold <= 0.75 && threshold > 0.5) {
-          val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
-            "                                     'SMA: ', SMA10.SMA_signal, 'BB: ', bb.BB_signal, 'CCI: ', cci.CCI_signal, 'stoch: ', stoch.stoch_signal, 'RSI: ', rsi.RSI_signal, 'MFI: ', mfi.MFI_signal," +
-            "                                     'Chaikin: ', chaikin.chaikin_signal, 'williamR: ', williamR.willR_signal," +
-
-            "                                     CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  0.5 THEN 1 " +
-            "                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -0.5 THEN 2 ELSE 0 END as responseVariable" +
-
-            "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
-
-            "                                     WHERE SMA10.stockTime = bb.stockTime AND bb.stockTime = cci.stockTime AND cci.stockTime = stoch.stockTime" +
-            "                                     AND stoch.stockTime = rsi.stockTime AND rsi.stockTime = mfi.stockTime AND mfi.stockTime = chaikin.stockTime" +
-            "                                     AND chaikin.stockTime = williamR.stockTime AND" +
-            "                                     SMA10.stockName = bb.stockName AND bb.stockName = cci.stockName AND cci.stockName = stoch.stockName " +
-            "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
-            "                                     AND chaikin.stockName = williamR.stockName")
-
-          baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, Int)]
-
-        }
-
-
-        else {
-
-          val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
-            "                                     ' SMA: ', SMA10.SMA_signal, 'BB: ', bb.BB_signal, 'CCI: ', cci.CCI_signal, 'stoch: ', stoch.stoch_signal, 'RSI: ', rsi.RSI_signal, 'MFI: ', mfi.MFI_signal," +
-            "                                     'Chaikin: ', chaikin.chaikin_signal, 'williamR: ', williamR.willR_signal," +
-
-            "                                     CASE WHEN mfi.lastPrice - bb.lastPriceLag >=  1 THEN 1 " +
-            "                                     WHEN mfi.lastPrice - bb.lastPriceLag <=  -1 THEN 2 ELSE 0 END as responseVariable" +
-
-            "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
-
-            "                                     WHERE SMA10.stockTime = bb.stockTime AND bb.stockTime = cci.stockTime AND cci.stockTime = stoch.stockTime" +
-            "                                     AND stoch.stockTime = rsi.stockTime AND rsi.stockTime = mfi.stockTime AND mfi.stockTime = chaikin.stockTime" +
-            "                                     AND chaikin.stockTime = williamR.stockTime AND" +
-            "                                     SMA10.stockName = bb.stockName AND bb.stockName = cci.stockName AND cci.stockName = stoch.stockName " +
-            "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
-            "                                     AND chaikin.stockName = williamR.stockName")
-
-          baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, Int)]
-
-
-        }
-
-    */
 
 
 
