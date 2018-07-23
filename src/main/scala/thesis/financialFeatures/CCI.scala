@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class CCItypes(stockTime: Timestamp, stockName: String,  CCI_signal:Int )
+case class CCItypes(stockTime: Timestamp, stockName: String,  CCI_signal:Int, CCI_direction: Int )
 
 object CCI {
 
@@ -24,9 +24,9 @@ object CCI {
     tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
 
     /* buy if CCI (t - 1) >= 100 and CCI (t) < -100
-    sell  if CCI (t - 1) <= 100 and CCI (t) > 100
-    hold otherwise
-     */
+       sell  if CCI (t - 1) <= 100 and CCI (t) > 100
+       hold otherwise
+        */
 
     val CCI_1 = tableEnv.sqlQuery("SELECT stockTime, stockName, (high + low + lastPrice)/3 as typicalPrice," +
       "                            (high + low + lastPrice)/3 -  AVG((high + low + lastPrice)/3) OVER(PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 20 PRECEDING AND CURRENT ROW) as numerator_CCI," +
@@ -83,7 +83,7 @@ object CCI {
       "                                   CASE WHEN CCIlag >= -100 AND CCI < -100  THEN 1 " +
       "                                   WHEN CCIlag <= 100 AND CCI > 100 THEN 2 ELSE 0 END as SMA_signal"  +
       "                                   FROM CCI_signal_3" +
-   //   "                                    WHERE stockName = 'ABBV UN Equity' " +
+      //   "                                    WHERE stockName = 'ABBV UN Equity' " +
       "                                 ")
 
 
@@ -91,7 +91,13 @@ object CCI {
 
     val CCI_signal4 = tableEnv.sqlQuery("SELECT stockTime, stockName, " +
       "                                   CASE WHEN CCIlag >= -100 AND CCI < -100  THEN 1 " +
-      "                                   WHEN CCIlag <= 100 AND CCI > 100 THEN 2 ELSE 0 END as SMA_signal"  +
+      "                                   WHEN CCIlag <= 100 AND CCI > 100 THEN 2 ELSE 0 END as SMA_signal, " +
+      "" +
+      "                                   CASE WHEN CCI <= -200 THEN 1" +
+      "                                   WHEN CCI > CCIlag AND CCI < 200 AND CCI > -200 THEN 1" +
+      "                                   WHEN CCI >= 200 THEN -1" +
+      "                                   WHEN CCI <= CCIlag AND CCI < 200 AND CCI > -200 THEN -1 ELSE 0 END AS CCI_direction" +
+      "                                    "  +
       "                                   FROM CCI_signal_3")
 
 

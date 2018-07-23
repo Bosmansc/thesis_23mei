@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class StochTypes(stockTime: Timestamp, stockName: String, stoch_signal: Int )
+case class StochTypes(stockTime: Timestamp, stockName: String, stoch_signal: Int, stoch_direction: Int )
 
 object Stoch {
 
@@ -26,8 +26,8 @@ object Stoch {
 
     // Stochastic Oscillator
 
-    val stoch = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, 100*((( lastPrice - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) )/" +
-      "                           ( MAX(high) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) ))) as K " +
+    val stoch = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, 100*((( lastPrice - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )/" +
+      "                           ( MAX(high) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) ))) as K " +
       "                           FROM stockTable ")
 
     val stoch_table = stoch.toAppendStream[( Timestamp,String, Double,Double)]
@@ -59,14 +59,18 @@ object Stoch {
     val signal_table_big = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, ROUND(D,2), ROUND(DLag,2)," +
       "                                     CASE WHEN DLag >= 20  AND D < 20  THEN 1 " +
       "                                     WHEN DLag <= 80 AND D > 80 THEN 2 ELSE 0 END as Stoch_signal" +
-      "                                     FROM table_signal" +
-      "                                     WHERE stockName = 'ABT UN Equity'" )
+      "                                     FROM table_signal" )
+  //    "                                     WHERE stockName = 'ABT UN Equity'" )
 
 
     // signal:
     val signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName," +
       "                                     CASE WHEN DLag >= 20  AND D < 20  THEN 1 " +
-      "                                     WHEN DLag <= 80 AND D > 80 THEN 2 ELSE 0 END as Stoch_signal" +
+      "                                     WHEN DLag <= 80 AND D > 80 THEN 2 ELSE 0 END as Stoch_signal," +
+      "" +
+      "                                     CASE WHEN DLag < D THEN 1" +
+      "                                     WHEN DLag >= D THEN -1 ELSE 0 END as stoch_direction " +
+
       "                                     FROM table_signal" )
 
 

@@ -71,7 +71,7 @@ object FeatureCalculation {
 
     // ************** merge all signals to BASETABLE and add responseVariable based on threshold: **************
 
-    val threshold = threshold
+
 
     //voorlopig zonder threshold: THRESHOLD VIA DOLLAR TEKEN DOEN!
     val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +

@@ -1,14 +1,16 @@
 package thesis
 
+import java.sql.Timestamp
 import java.util.Properties
 
-import org.apache.flink.core.fs.FileSystem.WriteMode
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{DataStream, _}
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer08
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema
+import org.apache.flink.table.api.scala._
 import org.apache.flink.table.api.{Table, TableEnvironment}
-import org.apache.flink.table.sinks.CsvTableSink
+import thesis.financialFeatures.RSITypes
+
 
 
 
@@ -17,6 +19,7 @@ object Main {
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setParallelism(1)
+    env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
     //Configure Flink to perform a consistent checkpoint of a program’s operator state every 1000ms.
     env.enableCheckpointing(1000)
@@ -29,10 +32,12 @@ object Main {
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", "localhost:9092")
     properties.setProperty("zookeeper.connect", "localhost:2181")
-    properties.setProperty("group.id", "stock16")
+    properties.setProperty("group.id", "stock17")
 
-    val stream: DataStream[StockQuotes] = env.addSource(new FlinkKafkaConsumer08[String]("stock16", new SimpleStringSchema(), properties))
+    val stream: DataStream[StockQuotes] = env.addSource(new FlinkKafkaConsumer08[String]("stock17", new SimpleStringSchema(), properties))
       .map(StockQuotes.fromString(_))
+
+
 
 
     // from which value a stock is considered to rise/fall: (recommended values: 0.01, 0.1, 0.2, 0.5, 0.75)
@@ -42,9 +47,11 @@ object Main {
 
     // convert stream to dataSet (stream to batch to make predictions)
     val table1: Table = tableEnv.fromDataStream(test)
+/*
 
-    test.print()
-    test
+
+     test.print()
+
 
     // nog loop maken die na aantal sec stopt, https://stackoverflow.com/questions/18358212/scala-looping-for-certain-duration werkt niet
 
@@ -56,11 +63,18 @@ object Main {
         numFiles = 1, // optional: write to a single file
         writeMode = WriteMode.NO_OVERWRITE)) // optional: override existing files
 
-    // val model = Batch.modelSvm
+     val model = Batch.modelSvm
 
 
     //  val prediction = input.map(new Predictor[_])
 //    Batch.modelSvm
+*/
+
+
+    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime, 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
+
+
+
 
 
     env.execute()

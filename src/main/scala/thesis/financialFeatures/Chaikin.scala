@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class ChaikinTypes(stockTime: Timestamp, stockName: String,  chaikin_signal:Int )
+case class ChaikinTypes(stockTime: Timestamp, stockName: String, lastPrice:Double, chaikin: Double,  chaikin_signal:Int, chaikin_direction:Int )
 
 object Chaikin {
 
@@ -34,9 +34,8 @@ object Chaikin {
 
     val chai_tbl = chai.toAppendStream[(Timestamp, String, Double,Double, Double, Double)]
 
-
-
     tableEnv.registerDataStream("chai_tbl_1", chai_tbl, 'stockTime, 'stockName, 'lastPrice, 'volume, 'moneyFlowMultiplier, 'moneyFlowVolume, 'UserActionTime.proctime )
+
 
     // Round hier nog fixen -> Nan wegwerken
     val chai_table_2 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, moneyFlowMultiplier, moneyFlowVolume, " +
@@ -57,6 +56,28 @@ object Chaikin {
 
     val chaikin_lag_table = chaikin_lag.toAppendStream[(Timestamp, String, Double, Double, Double)]
 
+    //10 ADL:
+    tableEnv.registerDataStream("chai_ad3", chaikin_lag_table, 'stockTime, 'stockName, 'lastPrice, 'chaikinMoneyFlow, 'chaikinMoneyFlowLag, 'UserActionTime.proctime )
+
+    val chaikin_ADL10 = tableEnv.sqlQuery("SELECT stockTime, stockName,  lastPrice, chaikinMoneyFlow, chaikinMoneyFlowLag, " +
+      "                                 AVG(chaikinMoneyFlow) OVER ( PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 10 PRECEDING AND CURRENT ROW) as ADL10" +
+      "                             " +
+      "                             FROM chai_ad3 ")
+    val chaikin_ADL10_table = chaikin_ADL10.toAppendStream[(Timestamp, String, Double, Double, Double, Double)]
+
+
+
+    //3 ADL:
+    tableEnv.registerDataStream("chai_ad10", chaikin_ADL10_table, 'stockTime, 'stockName, 'lastPrice, 'chaikinMoneyFlow,'chaikinMoneyFlowLag,'ADL10, 'UserActionTime.proctime )
+
+    val chaikin_ADL3 = tableEnv.sqlQuery("SELECT stockTime, stockName,  lastPrice, chaikinMoneyFlow, chaikinMoneyFlowLag, ADL10," +
+      "                                 AVG(chaikinMoneyFlow) OVER ( PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) as ADL3" +
+      "                             " +
+      "                             FROM chai_ad10 ")
+
+    val chaikin_ADL3_table = chaikin_ADL3.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double)]
+
+
     /*
     Buy if Chaikin (t - 1) <= 0 and Chaikin (t) > 0
     Sell if Chaikin (t - 1) >= 0 and Chaikin (t) < 0
@@ -64,26 +85,42 @@ object Chaikin {
     1 = BUY, 2 = SELL, 0 = HOLD
      */
 
-    tableEnv.registerDataStream("chaikin_big_table", chaikin_lag_table, 'stockTime, 'stockName, 'lastPrice,  'chaikinMoneyFlow, 'chaikinMoneyFlowLag, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("chaikin_ADL3_table", chaikin_ADL3_table, 'stockTime, 'stockName, 'lastPrice,  'chaikinMoneyFlow, 'chaikinMoneyFlowLag, 'ADL10, 'ADL3, 'UserActionTime.proctime )
+
+    val chaikin = tableEnv.sqlQuery("SELECT stockTime, stockName,  lastPrice, chaikinMoneyFlow, " +
+      "                                   ADL3 - ADL10 as chaikin" +
+      "                             " +
+      "                             FROM chaikin_ADL3_table ")
+
+    val chaikin_stream = chaikin.toAppendStream[(Timestamp, String, Double, Double, Double)]
+
+    // lag table:
+    tableEnv.registerDataStream("chaikin_lag", chaikin_stream, 'stockTime, 'stockName, 'lastPrice,  'chaikinMoneyFlow, 'chaikin, 'UserActionTime.proctime )
+
+    val chaiking_lag = tableEnv.sqlQuery("SELECT stockTime, stockName,  lastPrice, chaikin, SUM(chaikin) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - chaikin as chaikinLag" +
+      "                             " +
+      "                             FROM chaikin_lag ")
+
+
+    val chaikin_lag_stream = chaiking_lag.toAppendStream[(Timestamp, String, Double, Double, Double)]
+
+    tableEnv.registerDataStream("chaiking", chaikin_lag_stream, 'stockTime, 'stockName, 'lastPrice,  'chaikin, 'chaikinLag, 'UserActionTime.proctime )
+
 
     //table to check outcome:
-    val chaikin_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, ROUND(chaikinMoneyFlow,2), ROUND(chaikinMoneyFlowLag,2)," +
-      "                                       CASE WHEN chaikinMoneyFlowLag <= 0 AND chaikinMoneyFlow > 0 THEN 1 " +
-      "                                       WHEN chaikinMoneyFlowLag >= 0 AND chaikinMoneyFlow < 0 THEN 2 ELSE 0 END as chaikin_signal" +
-      "                                       FROM chaikin_big_table" +
+    val chaikin_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, chaikin ," +
+      "                                       CASE WHEN chaikinLag <= 0 AND chaikin > 0 THEN 1 " +
+      "                                       WHEN chaikinLag >= 0 AND chaikin < 0 THEN 2 ELSE 0 END as chaikin_signal," +
+      "" +
+      "                                       CASE WHEN chaikin > 0 then 1 WHEN chaikin <= 0 then -1 ELSE 0 END as chaikin_direction" +
+
+      "                                       FROM chaiking" +
       "                                       WHERE stockName = 'AAPL UW Equity'" +
       "                                        ")
 
+    val chaikin_signalAndDirection = chaikin_signal_table.toAppendStream[(ChaikinTypes)]
 
-    // signal: (21 iterations needed for useful results)
-    val chaikin_signal = tableEnv.sqlQuery("SELECT stockTime, stockName," +
-      "                                       CASE WHEN chaikinMoneyFlowLag <= 0 AND chaikinMoneyFlow > 0 THEN 1 " +
-      "                                       WHEN chaikinMoneyFlowLag >= 0 AND chaikinMoneyFlow < 0 THEN 2 ELSE 0 END as chaikin_signal" +
-      "                                       FROM chaikin_big_table" +
-      "                                        ")
-
-
-    chaikin_signal.toAppendStream[(ChaikinTypes)]
+    chaikin_signal_table.toAppendStream[(ChaikinTypes)]
 
 
   }

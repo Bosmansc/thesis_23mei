@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class BolBandtypes(stockTime: Timestamp, stockName: String,  lastPriceLag: Double, BB_signal:Int )
+case class BolBandtypes(stockTime: Timestamp, stockName: String, lastPrice:Double, lastPriceLag: Double, BB_signal:Int, BB_direction:Int )
 
 object BolBand {
 
@@ -102,6 +102,11 @@ object BolBand {
    Hold otherwise
 
    1 = BUY, 2 = SELL, 0 = HOLD
+
+   Direction Increase if close (t) < LBB (t)
+   or if close (t) > MBB (t) and close (t) < UBB (t)
+   Decrease if close (t) > UBB (t)
+   or if close (t) < MBB (t) and close (t) > LBB (t)
     */
 
     // table to check the outcome:
@@ -114,11 +119,18 @@ object BolBand {
       "                                       WHERE stockName = 'ABT UN Equity' ")
 
     // signal: (lastPriceLag included for response variable calculation in FeatureCalculation)
-    val BB_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPriceLag," +
+    val BB_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, ROUND(lastPriceLag,2)," +
       "                                       CASE WHEN lastPriceLag <= BB_upperBoundLag AND lastPrice > BB_upperBound  THEN 1 " +
-      "                                       WHEN lastPriceLag >= BB_lowerBoundLag AND lastPrice < BB_lowerBound THEN 2 ELSE 0 END as BB_signal  " +
+      "                                       WHEN lastPriceLag >= BB_lowerBoundLag AND lastPrice < BB_lowerBound THEN 2 ELSE 0 END as BB_signal," +
+      "                                 " +
+      "                                       CASE WHEN lastPrice < BB_lowerBound THEN 1 " +
+      "                                       WHEN lastPrice < BB_upperBound AND lastPrice > BB_middleBand THEN 1" +
+      "                                       WHEN lastPrice > BB_upperBound THEN -1" +
+      "                                       WHEN lastPrice < BB_middleBand AND lastPrice > BB_lowerBound THEN -1 ELSE 0 END as BB_direction " +
 
-      "                                       FROM  bol_band_table_signal" )
+      "                                       FROM  bol_band_table_signal" +
+      "" +
+      "                                       " )
 
 
 

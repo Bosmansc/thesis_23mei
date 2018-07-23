@@ -112,7 +112,7 @@ object Batch {
         evalSet.map(t => (t._1, t._2, 1)).groupBy(0, 1).reduce((x1, x2) => (x1._1, x1._2, x1._3 + x2._3)).print()
         val eval = evalSet.map(t => (t._1, t._2, 1)).groupBy(0, 1).reduce((x1, x2) => (x1._1, x1._2, x1._3 + x2._3))
 
-        //** accuracy = (TP + TN)/(TP + TN + FP + FN)
+        //** accuracy = (TP + TN)/(TP + TN + FP + FN) -> in paper between 58 and 68 percent
         print("accurcay: " + "\n")
 
        val total = eval.sum(2).first(2)

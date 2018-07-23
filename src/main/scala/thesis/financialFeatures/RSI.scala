@@ -9,7 +9,7 @@ import thesis.StockQuotes
 
 
 
-case class RSITypes(stockTime: Timestamp, stockName: String,  RSI_signal: Int )
+case class RSITypes(stockTime: Timestamp, stockName: String,  lastPrice:Double, RSI: Double, RSI_signal: Int, RSI_direction:Int )
 
 object RSI {
 
@@ -22,6 +22,7 @@ object RSI {
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
     tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
+
 
     // Relative Strength Index
 
@@ -62,8 +63,13 @@ object RSI {
 
     tableEnv.registerDataStream("RSIsignal_table2", RSIsignal_table2, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS , 'RSI, 'UserActionTime.proctime )
 
+    val rsi_lag_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, RSI," +
+      "                                    SUM(RSI)OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - RSI  as RSIlag " +
+      "                                    FROM RSIsignal_table2" )
 
+    val rsi_lag_stream = rsi_lag_table.toAppendStream[( Timestamp,String, Double,Double, Double)]
 
+    tableEnv.registerDataStream("lagRSI", rsi_lag_stream, 'stockTime, 'stockName, 'lastPrice, 'RSI, 'RSIlag, 'UserActionTime.proctime )
 
 
     /*
@@ -79,21 +85,20 @@ object RSI {
     // big table to check the outcome:
     val RSI_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName , lastPrice, ROUND(RSI,2)," +
       "                                       CASE WHEN RSI < 30 THEN 1 " +
-      "                                       WHEN RSI > 70  THEN 2 ELSE 0 END as RSI_signal  " +
+      "                                       WHEN RSI > 70  THEN 2 ELSE 0 END as RSI_signal, " +
+      "" +
+      "                                       CASE WHEN RSI <= 30 THEN 1" +
+      "                                       WHEN RSI >= RSIlag AND RSI > 30 AND RSI < 70 THEN 1 " +
+      "                                       WHEN RSI >= 70 THEN -1" +
+      "                                       WHEN RSI <= RSIlag AND RSI > 30 AND RSI < 70 THEN -1 ELSE 0 END AS RSI_direction  " +
 
-      "                                       FROM  RSIsignal_table" +
-      "                                       WHERE stockName = 'ABT UN Equity' ")
+      "                                       FROM  lagRSI" +
+      "                                       WHERE stockName = 'ABT UN Equity'" +
+      " ")
 
-    // RSI_signal_table.toAppendStream[(RSITypes)]
 
-    // signal:
-    val RSI_signal = tableEnv.sqlQuery("SELECT stockTime, stockName ," +
-      "                                       CASE WHEN RSI < 30 THEN 1 " +
-      "                                       WHEN RSI > 70  THEN 2 ELSE 0 END as RSI_signal  " +
 
-      "                                       FROM  RSIsignal_table")
-
-    RSI_signal.toAppendStream[(RSITypes)]
+    RSI_signal_table.toAppendStream[(RSITypes)]
 
     /* MODIFICATIONS:
 
