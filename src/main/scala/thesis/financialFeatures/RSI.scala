@@ -41,27 +41,43 @@ object RSI {
 
     val rsi_table = rsi.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double)]
 
+
     tableEnv.registerDataStream("rsi_table_1", rsi_table, 'stockTime, 'stockName, 'lastPrice, 'lastPriceLag, 'difference, 'posDifference, 'negDifference, 'UserActionTime.proctime )
 
     val rsi_table_1 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, posDifference, negDifference, " +
-      "                                 ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) ) as RS," +
 
-      "                                  100 - 100/( 1 + ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) )) as RSI"  +
+      "                                 ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) ) as RS," +
+
+      "                                  100 - 100/( 1 + ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )) as RSI"  +
 
       "                                   FROM rsi_table_1")
 
     val RSIsignal_table = rsi_table_1.toAppendStream[( Timestamp, String, Double, Double, Double, Double, Double)]
 
+
     tableEnv.registerDataStream("RSIsignal_table", RSIsignal_table, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS , 'RSI, 'UserActionTime.proctime )
 
     val rsi_table_2 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, posDifference, negDifference, " +
-      "                                 RS, SUM(RS) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - RS as RSlag" +
+      "                                 RS, " +
+      "                                  CASE WHEN RS > 100 THEN 1 ELSE RS END AS RS1, RSI" +
 
       "                                   FROM RSIsignal_table")
 
-    val RSIsignal_table2 = rsi_table_2.toAppendStream[( Timestamp, String, Double, Double, Double, Double, Double)]
+    val RSIsignal_table2 = rsi_table_2.toAppendStream[( Timestamp, String, Double, Double, Double, Double, Double, Double)]
 
-    tableEnv.registerDataStream("RSIsignal_table2", RSIsignal_table2, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS , 'RSI, 'UserActionTime.proctime )
+
+    tableEnv.registerDataStream("RSIsignal_table_NaN", RSIsignal_table2, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS , 'RS1, 'RSI, 'UserActionTime.proctime )
+
+    val rsi_table_3 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, posDifference, negDifference, " +
+      "                                 RS1, " +
+      "                                   SUM(RS1) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - RS1  AS RSlag, RSI" +
+
+      "                                   FROM RSIsignal_table_NaN")
+
+    val RSIsignal_table3 = rsi_table_3.toAppendStream[( Timestamp, String, Double, Double, Double, Double, Double, Double)]
+
+
+    tableEnv.registerDataStream("RSIsignal_table2", RSIsignal_table3, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS ,'RSlag, 'RSI, 'UserActionTime.proctime )
 
     val rsi_lag_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, RSI," +
       "                                    SUM(RSI)OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - RSI  as RSIlag " +
@@ -84,8 +100,8 @@ object RSI {
 
     // big table to check the outcome:
     val RSI_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName , lastPrice, ROUND(RSI,2)," +
-      "                                       CASE WHEN RSI < 30 THEN 1 " +
-      "                                       WHEN RSI > 70  THEN 2 ELSE 0 END as RSI_signal, " +
+      "                                       CASE WHEN RSI < 20 AND RSI > 0 AND RSI < RSIlag THEN 1 " +
+      "                                       WHEN RSI > 80 AND RSI < 100 AND RSI > RSIlag THEN 2 ELSE 0 END as RSI_signal, " +
       "" +
       "                                       CASE WHEN RSI <= 30 THEN 1" +
       "                                       WHEN RSI >= RSIlag AND RSI > 30 AND RSI < 70 THEN 1 " +
@@ -93,7 +109,7 @@ object RSI {
       "                                       WHEN RSI <= RSIlag AND RSI > 30 AND RSI < 70 THEN -1 ELSE 0 END AS RSI_direction  " +
 
       "                                       FROM  lagRSI" +
-      "                                       WHERE stockName = 'ABT UN Equity'" +
+     // "                                       WHERE stockName = 'ABT UN Equity'" +
       " ")
 
 

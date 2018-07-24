@@ -115,7 +115,7 @@ object Chaikin {
       "                                       CASE WHEN chaikin > 0 then 1 WHEN chaikin <= 0 then -1 ELSE 0 END as chaikin_direction" +
 
       "                                       FROM chaiking" +
-      "                                       WHERE stockName = 'AAPL UW Equity'" +
+   //   "                                       WHERE stockName = 'AAPL UW Equity'" +
       "                                        ")
 
     val chaikin_signalAndDirection = chaikin_signal_table.toAppendStream[(ChaikinTypes)]
