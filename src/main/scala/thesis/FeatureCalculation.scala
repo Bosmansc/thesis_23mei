@@ -17,14 +17,14 @@ object FeatureCalculation {
   env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
 
-  def  calculation (stream: DataStream[StockQuotes]): DataStream[(Timestamp, String, Double,Double, String, Int,Int, String, Int,Int, String, Int,Int, String, Int, Int,String, Int,Int, String, Int, Int,String, Int,Int, String,Int, Int)] = {
+  def  calculation (stream: DataStream[StockQuotes]): DataStream[(Timestamp,String,  Double,Double,  Int,Int,  Int,Int,  Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int, Int)] = {
  // def  calculation (stream: DataStream[StockQuotes], threshold: Double): DataStream[(Timestamp, String, Double,Double, Int, Int,  Int, Int,  Int,  Int,  Int,  Int, Int)] = {
 
     // hier alle streams joinen naar één stream = basetable
 
     // SMA signal is calculated
     val sma10 = SMA.calculateSMA(stream, tableEnv, env)
-    tableEnv.registerDataStream("SMA10", sma10, 'stockTime, 'stockName,'lastPirce, 'SMA_signal,'SMA_direction, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("SMA10", sma10, 'stockTime, 'stockName,'lastPrice, 'SMA_signal,'SMA_direction, 'UserActionTime.proctime )
 
     // bb signal is calculated
     val bb = BolBand.calculateBolBand(stream, tableEnv, env)
@@ -70,12 +70,12 @@ object FeatureCalculation {
 
 
     // **************************** merge all signals to BASETABLE and add responseVariable based on threshold for STREAMING model: ****************************
-    // eigenlijk moet hier geen responsevariabele zijn!!
+
 
     val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
-      "                                     ' SMA: ', SMA10.SMA_signal, SMA10.SMA_direction,  ' BB: ', bb.BB_signal, BB_direction, ' CCI: ', cci.CCI_signal, CCI_direction, " +
-      "                                     ' stoch: ', stoch.stoch_signal, stoch_direction, ' RSI: ', rsi.RSI_signal, RSI_direction, ' MFI: ', mfi.MFI_signal, moneyFlowIndex_direction," +
-      "                                     ' Chaikin: ', chaikin.chaikin_signal, chaikin_direction, ' williamR: ', williamR.willR_signal, williamsR_direction," +
+      "                                      SMA10.SMA_signal, SMA10.SMA_direction,  bb.BB_signal, BB_direction,  cci.CCI_signal, CCI_direction, " +
+      "                                      stoch.stoch_signal, stoch_direction,  rsi.RSI_signal, RSI_direction,  mfi.MFI_signal, moneyFlowIndex_direction," +
+      "                                      chaikin.chaikin_signal, chaikin_direction,  williamR.willR_signal, williamsR_direction" +
 
       "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
 
@@ -86,21 +86,18 @@ object FeatureCalculation {
       "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
       "                                     AND chaikin.stockName = williamR.stockName" +
       "                                     " +
-       "                                      AND williamR.stockName ='AAPL UW Equity' " +
+  //     "                                      AND williamR.stockName ='AAPL UW Equity' " +
       "                                   " )
 
 
 
 
-    baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int,Int, String, Int,Int, String, Int,Int, String, Int,Int, String, Int, Int,String, Int,Int, String, Int,Int, String, Int,Int)]
-    val BaseTableStream =  baseTable.toAppendStream[(Timestamp, String, Double,Double, String, Int,Int, String, Int,Int, String, Int,Int, String, Int,Int, String,Int, Int, String, Int,Int, String, Int,Int, String,Int, Int)]
+    val BaseTableStream = baseTable.toAppendStream[(Timestamp, String, Double,Double,  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
 
-    tableEnv.registerDataStream("BaseTableBatch", BaseTableStream, 'stockTime, 'stockName, 'lastPrice,'lastPriceLag, 'SMAS, 'SMA_signal, 'BB, 'BB_signal, 'CCI, 'CCI_signal, 'stoch, 'stoch_signal, 'RSI, 'RSI_signal, 'MFI, 'MFI_signal,
-      'Chaikin, 'chaikin_signal, 'williamR, 'willR_signal, 'UserActionTime.proctime )
 
 
     // stream output:
-    BaseTableStream
+    baseTable.toAppendStream[(Timestamp, String, Double,Double,  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
 
 
 

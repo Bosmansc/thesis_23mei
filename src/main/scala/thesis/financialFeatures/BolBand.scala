@@ -116,7 +116,8 @@ object BolBand {
       "                                       WHEN lastPriceLag >= BB_lowerBoundLag AND lastPrice < BB_lowerBound THEN 2 ELSE 0 END as BB_signal  " +
 
       "                                       FROM  bol_band_table_signal" +
-      "                                       WHERE stockName = 'ABT UN Equity' ")
+    //  "                                       WHERE stockName = 'ABT UN Equity' " +
+      "")
 
     // signal: (lastPriceLag included for response variable calculation in FeatureCalculation)
     val BB_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, ROUND(lastPriceLag,2)," +

@@ -101,7 +101,7 @@ object MFI {
       "                                        WHEN moneyFlowIndex <= moneyFlowIndexLag AND moneyFlowIndex >20 AND moneyFlowIndex < 80 THEN -1 ELSE 0 END AS moneyFlowIndex_direction" +
       "" +
       "                                       FROM mfi_lag_table" +
-      "                                        WHERE stockName = 'ABBV UN Equity' " +
+   //   "                                        WHERE stockName = 'ABBV UN Equity' " +
       "                                        ")
 
 

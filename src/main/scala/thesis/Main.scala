@@ -9,11 +9,14 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer08
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema
 import org.apache.flink.table.api.{Table, TableEnvironment}
 import org.apache.flink.table.sinks.CsvTableSink
+import io.radicalbit.flink.pmml.scala._
 
 
 
 
 object Main {
+
+  val kafkaName = "stock28" // to link kafka with stream producer
   def main(args: Array[String]) {
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
@@ -28,12 +31,13 @@ object Main {
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
 
+
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", "localhost:9092")
     properties.setProperty("zookeeper.connect", "localhost:2181")
-    properties.setProperty("group.id", "stock21")
+    properties.setProperty("group.id", s"$kafkaName")
 
-    val stream: DataStream[StockQuotes] = env.addSource(new FlinkKafkaConsumer08[String]("stock21", new SimpleStringSchema(), properties))
+    val stream: DataStream[StockQuotes] = env.addSource(new FlinkKafkaConsumer08[String](s"$kafkaName", new SimpleStringSchema(), properties))
       .map(StockQuotes.fromString(_))
 
 
@@ -43,24 +47,31 @@ object Main {
 
     // **************************** STREAMING model: ****************************
 
-    val streamWithFeatures = FeatureCalculation.calculation(stream)
-    streamWithFeatures.print()
+    //val streamWithFeatures = FeatureCalculation.calculation(stream)
+   // streamWithFeatures.print()
 
 
     // **************************** BATCH model: ****************************
 
-    val batchStreamWithFeatures = FeatureCalculationBatch(stream, threshold)
+    val batchStreamWithFeatures = FeatureCalculationBatch.calculation(stream, threshold)
 
     // convert stream to dataSet (stream to batch to make predictions)
     val batchTable: Table = tableEnv.fromDataStream(batchStreamWithFeatures)
 
+    //define output location name:
+    val outputLocation = "AAPL_batch_big4"
+
+
+
     // work with if: if return is to low: then write to sink
     batchTable.writeToSink(
       new CsvTableSink(
-        "C:\\Users\\ceder\\Flink\\GE_big", // output path
+        s"C:\\Users\\ceder\\Flink\\$outputLocation", // output path
         fieldDelim = ",", // optional: delimit files by '|'
         numFiles = 1, // optional: write to a single file
         writeMode = WriteMode.NO_OVERWRITE)) // optional: override existing files
+
+    // **************************** Read in pmml SVM-model: (generated in R) ****************************
 
 
     env.execute()

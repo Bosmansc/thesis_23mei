@@ -19,13 +19,13 @@ object FeatureCalculationBatch {
 
 
   // def  calculation (stream: DataStream[StockQuotes], threshold: Double): DataStream[(Timestamp, String, Double,Double, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, String, Int, Int)] = {
-  def  calculation (stream: DataStream[StockQuotes], threshold: Double): DataStream[(Timestamp, String, Double,Double, Int, Int,  Int, Int,  Int,  Int,  Int,  Int, Int)] = {
+  def  calculation (stream: DataStream[StockQuotes], threshold: Double): DataStream[(Timestamp, String, Double,Double,  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int, Int)] = {
 
     // hier alle streams joinen naar één stream = basetable
 
     // SMA signal is calculated
     val sma10 = SMA.calculateSMA(stream, tableEnv, env)
-    tableEnv.registerDataStream("SMA10", sma10, 'stockTime, 'stockName,'lastPirce, 'SMA_signal,'SMA_direction, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("SMA10", sma10, 'stockTime, 'stockName,'lastPrice, 'SMA_signal,'SMA_direction, 'UserActionTime.proctime )
 
     // bb signal is calculated
     val bb = BolBand.calculateBolBand(stream, tableEnv, env)
@@ -71,20 +71,54 @@ object FeatureCalculationBatch {
 
     // **************************** stream for batch processing to generate the ML model ****************************
 
+    val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
+      "                                      SMA10.SMA_signal, SMA10.SMA_direction,  bb.BB_signal, BB_direction,  cci.CCI_signal, CCI_direction, " +
+      "                                      stoch.stoch_signal, stoch_direction,  rsi.RSI_signal, RSI_direction,  mfi.MFI_signal, moneyFlowIndex_direction," +
+      "                                      chaikin.chaikin_signal, chaikin_direction,  williamR.willR_signal, williamsR_direction" +
+
+      "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
+
+      "                                     WHERE SMA10.stockTime = bb.stockTime AND bb.stockTime = cci.stockTime AND cci.stockTime = stoch.stockTime" +
+      "                                     AND stoch.stockTime = rsi.stockTime AND rsi.stockTime = mfi.stockTime AND mfi.stockTime = chaikin.stockTime" +
+      "                                     AND chaikin.stockTime = williamR.stockTime AND" +
+      "                                     SMA10.stockName = bb.stockName AND bb.stockName = cci.stockName AND cci.stockName = stoch.stockName " +
+      "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
+      "                                     AND chaikin.stockName = williamR.stockName" +
+      "                                     " +
+      //     "                                      AND williamR.stockName ='AAPL UW Equity' " +
+      "                                   " )
+
+    val BaseTableStream = baseTable.toAppendStream[(Timestamp, String, Double,Double,  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
+
+    tableEnv.registerDataStream("BaseTableBatch", BaseTableStream,  'stockTime , 'stockName, 'lastPrice, 'lastPriceLag, 'SMA_signal, 'SMA_direction, 'BB_signal, 'BB_direction, 'CCI_signal, 'CCI_direction,
+      'stoch_signal, 'stoch_direction,  'RSI_signal, 'RSI_direction,  'MFI_signal, 'moneyFlowIndex_direction,
+      'chaikin_signal, 'chaikin_direction,  'willR_signal, 'williamsR_direction,  'UserActionTime.proctime)
+
+
 
     // ONLY USE THIS FOR BATCH TRAINING, NOT FOR SCORING, ALL LABELS ARE ONE ROW LAGGED!
     val BaseTableBatch2 = tableEnv.sqlQuery(
-      """
+      s"""
                                       |SELECT stockTime, stockName, lastPrice, lastPriceLag,
                                       | SUM(SMA_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - SMA_signal,
+                                      | SUM(SMA_direction) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - SMA_direction,
                                       | SUM(BB_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - BB_signal,
+                                      | SUM(BB_direction) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - BB_direction,
                                       | SUM(CCI_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - CCI_signal,
+                                      | SUM(CCI_direction) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - CCI_direction,
                                       | SUM(stoch_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - stoch_signal,
+                                      | SUM(stoch_direction) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - stoch_direction,
                                       | SUM(chaikin_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - chaikin_signal,
+                                      | SUM(chaikin_direction) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - chaikin_direction,
                                       | SUM(willR_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - willR_signal,
+                                      | SUM(williamsR_direction) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - williamsR_direction,
                                       | SUM(RSI_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - RSI_signal,
+                                      | SUM(RSI_direction) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - RSI_direction,
                                       | SUM(MFI_signal) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - MFI_signal,
-                                      | responseVariable
+                                      | SUM(moneyFlowIndex_direction) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - moneyFlowIndex_direction,
+                                      |
+                                      | CASE WHEN lastPrice - lastPriceLag >= $threshold THEN 1
+                                      |  WHEN lastPrice - lastPriceLag <=  -$threshold THEN 2 ELSE 0 END AS responseVariable
 
                                       |
                                       |FROM BaseTableBatch
@@ -92,7 +126,7 @@ object FeatureCalculationBatch {
 
                                     """.stripMargin)
 
-    val batchStream = BaseTableBatch2.toAppendStream[(Timestamp, String, Double,Double, Int, Int,  Int, Int,  Int,  Int,  Int,  Int, Int)]
+    val batchStream = BaseTableBatch2.toAppendStream[(Timestamp, String, Double,Double,  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int, Int)]
     batchStream
 
 
