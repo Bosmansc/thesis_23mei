@@ -1,12 +1,21 @@
 package thesis
 
-import java.sql.Timestamp
 
+import org.apache.flink.ml.math.DenseVector
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment, _}
 import org.apache.flink.table.api.TableEnvironment
 import org.apache.flink.table.api.scala._
 import thesis.financialFeatures._
+
+case class SignalAndDirectionTypes(SMA_signal:Int, SMA_direction: Int, BB_signal: Int, BB_direction:Int, CCI_signal:Int, CCI_direction:Int,
+                                   stoch_signal: Int, stoch_direction:Int, RSI_signal:Int, RSI_direction:Int, MFI_signal:Int, moneyFlowIndex_direction:Int,
+                                   chaikin_signal:Int, chaikin_direction:Int, willR_signal:Int, williamsR_direction:Int)  {
+
+  def toVector = DenseVector(SMA_signal, SMA_direction, BB_signal, BB_direction, CCI_signal, CCI_direction,
+    stoch_signal, stoch_direction, RSI_signal, RSI_direction,  MFI_signal, moneyFlowIndex_direction,
+    chaikin_signal, chaikin_direction,  willR_signal, williamsR_direction)
+}
 
 object FeatureCalculation {
 
@@ -17,7 +26,8 @@ object FeatureCalculation {
   env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
 
-  def  calculation (stream: DataStream[StockQuotes]): DataStream[(Timestamp,String,  Double,Double,  Int,Int,  Int,Int,  Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int, Int)] = {
+  def  calculation (stream: DataStream[StockQuotes]): DataStream[  SignalAndDirectionTypes] = {
+ // def  calculation (stream: DataStream[StockQuotes]): DataStream[(Timestamp,String,  Double,Double,  Int,Int,  Int,Int,  Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int, Int)] = {
  // def  calculation (stream: DataStream[StockQuotes], threshold: Double): DataStream[(Timestamp, String, Double,Double, Int, Int,  Int, Int,  Int,  Int,  Int,  Int, Int)] = {
 
     // hier alle streams joinen naar één stream = basetable
@@ -72,7 +82,7 @@ object FeatureCalculation {
     // **************************** merge all signals to BASETABLE and add responseVariable based on threshold for STREAMING model: ****************************
 
 
-    val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
+    val baseTable = tableEnv.sqlQuery("SELECT " +
       "                                      SMA10.SMA_signal, SMA10.SMA_direction,  bb.BB_signal, BB_direction,  cci.CCI_signal, CCI_direction, " +
       "                                      stoch.stoch_signal, stoch_direction,  rsi.RSI_signal, RSI_direction,  mfi.MFI_signal, moneyFlowIndex_direction," +
       "                                      chaikin.chaikin_signal, chaikin_direction,  williamR.willR_signal, williamsR_direction" +
@@ -92,12 +102,13 @@ object FeatureCalculation {
 
 
 
-    val BaseTableStream = baseTable.toAppendStream[(Timestamp, String, Double,Double,  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
+    val BaseTableStream = baseTable.toAppendStream[(Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
 
 
 
     // stream output:
-    baseTable.toAppendStream[(Timestamp, String, Double,Double,  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
+   // baseTable.toAppendStream[(  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
+    baseTable.toAppendStream[(SignalAndDirectionTypes)]
 
 
 

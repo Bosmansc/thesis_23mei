@@ -26,11 +26,11 @@ under the License.
 		<groupId>org.apache.flink</groupId>
 		<artifactId>flink-examples</artifactId>
 		<version>1.6-SNAPSHOT</version>
-		<relativePath>..</relativePath>
+		<relativePath></relativePath>
 	</parent>
 
 	<name>flink-examples-table</name>
-	<artifactId>flink-examples-table_${scala.binary.version}</artifactId>
+	<artifactId>flink-examples-table_</artifactId>
 	<packaging>jar</packaging>
 
 	<dependencies>
@@ -82,12 +82,24 @@ under the License.
 		</dependency>
 
 
+		<!-- https://mvnrepository.com/artifact/io.radicalbit/flink-jpmml-scala -->
+		<dependency>
+			<groupId>io.radicalbit</groupId>
+			<artifactId>flink-jpmml-scala_2.11</artifactId>
+			<version>0.6.1</version>
+		</dependency>
+
+
+
+
 
 
 
 
 
 	</dependencies>
+
+
 
 	<build>
 		<plugins>

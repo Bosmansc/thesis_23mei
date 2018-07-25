@@ -44,6 +44,13 @@
     <orderEntry type="library" name="Maven: org.spire-math:spire_2.11:0.7.4" level="project" />
     <orderEntry type="library" name="Maven: org.spire-math:spire-macros_2.11:0.7.4" level="project" />
     <orderEntry type="library" name="Maven: com.chuusai:shapeless_2.11:2.0.0" level="project" />
+    <orderEntry type="library" name="Maven: io.radicalbit:flink-jpmml-scala_2.11:0.6.1" level="project" />
+    <orderEntry type="library" name="Maven: io.radicalbit:flink-jpmml-assets_2.11:0.6.1" level="project" />
+    <orderEntry type="library" name="Maven: org.jpmml:pmml-evaluator:1.3.9" level="project" />
+    <orderEntry type="library" name="Maven: org.jpmml:pmml-model:1.3.7" level="project" />
+    <orderEntry type="library" name="Maven: org.jpmml:pmml-agent:1.3.7" level="project" />
+    <orderEntry type="library" name="Maven: org.jpmml:pmml-schema:1.3.7" level="project" />
+    <orderEntry type="library" name="Maven: com.google.guava:guava:20.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-core:1.6-SNAPSHOT" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-annotations:1.6-SNAPSHOT" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-metrics-core:1.6-SNAPSHOT" level="project" />

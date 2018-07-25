@@ -6,6 +6,7 @@ import java.time.*;
 import java.util.*;
 import org.apache.commons.compress.archivers.dump.*;
 import org.apache.kafka.clients.producer.*;
+import thesis.*;
 
 
 public class StockExchange {
@@ -60,7 +61,7 @@ public class StockExchange {
         Producer<String, String> producer = new KafkaProducer<>(props);
 
         // initialises delay between minutes:
-        int lag = 2000;
+        int lag = 3000;
 
         StockQuote stockQuote;
 
@@ -72,6 +73,7 @@ public class StockExchange {
         //   LocalDateTime end = LocalDateTime.of(2015, 11, 6, 21, 59);
         LocalDateTime end = stockQuotes.get(stockQuotes.size() - 1).getDate();
 
+        String name = Main.kafkaName();
 
         for (LocalDateTime date = start; date.isBefore(end); date = date.plusMinutes(1)) {
 
@@ -85,7 +87,7 @@ public class StockExchange {
 
                         System.out.println(s.getStockName() + ", " + stockQuote);
 
-                        producer.send(new ProducerRecord<String, String>("stock5", s.getStockName() + ", " + stockQuote));
+                        producer.send(new ProducerRecord<String, String>(name, s.getStockName() + ", " + stockQuote));
 
                         s.getStockQuotes().remove(stockQuote);
                     }

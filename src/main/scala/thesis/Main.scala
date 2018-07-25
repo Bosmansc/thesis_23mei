@@ -2,21 +2,23 @@ package thesis
 
 import java.util.Properties
 
-import org.apache.flink.core.fs.FileSystem.WriteMode
+import io.radicalbit.flink.pmml.scala._
+import io.radicalbit.flink.pmml.scala.api.reader.ModelReader
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{DataStream, _}
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer08
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema
-import org.apache.flink.table.api.{Table, TableEnvironment}
-import org.apache.flink.table.sinks.CsvTableSink
-import io.radicalbit.flink.pmml.scala._
+import org.apache.flink.table.api.TableEnvironment
+
+
+
 
 
 
 
 object Main {
 
-  val kafkaName = "stock28" // to link kafka with stream producer
+  val kafkaName = "stock30" // to link kafka with stream producer
   def main(args: Array[String]) {
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
@@ -24,13 +26,9 @@ object Main {
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
     //Configure Flink to perform a consistent checkpoint of a program’s operator state every 1000ms.
-    env.enableCheckpointing(1000)
+    env.enableCheckpointing(100000)
 
     val tableEnv = TableEnvironment.getTableEnvironment(env)
-
-    env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
-
-
 
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", "localhost:9092")
@@ -45,21 +43,53 @@ object Main {
     val threshold = 0.05
 
 
-    // **************************** STREAMING model: ****************************
+    // ******************************************************* STREAMING model: *******************************************************
 
-    //val streamWithFeatures = FeatureCalculation.calculation(stream)
-   // streamWithFeatures.print()
+    val streamWithFeatures = FeatureCalculation.calculation(stream)
 
 
-    // **************************** BATCH model: ****************************
+  //  streamWithFeatures.print()
 
+    // ******************************************************* PREDICTION model: *******************************************************
+    //Load PMML model
+    val pathToPmml = "C:\\Users\\ceder\\Flink"
+    val pathToPmml2 = "C:\\Users\\ceder\\Flink\\svm.pmml"
+
+    //  a lazy reader implementation
+    val reader = ModelReader(pathToPmml)
+
+    //Load PMML model
+    val modelReader = ModelReader(pathToPmml2)
+
+    // *****  Using evaluate operator
+
+
+    val prediction = streamWithFeatures.evaluate(modelReader) {
+      //Iris data and modelReader instance
+      case (event, model) =>
+        val vectorized = event.toVector //to vector does not work
+        val prediction = model.predict(vectorized, Some(0.0))
+        (event, prediction.value.getOrElse(-1.0))
+    }
+
+    prediction.print()
+
+    // *****  Using quickEvaluate operator
+  /*  streamToVector
+      .quickEvaluate(modelReader) // quick evaluate does not load
+      .print()*/
+
+
+
+    // ******************************************************* BATCH model: *******************************************************
+/*
     val batchStreamWithFeatures = FeatureCalculationBatch.calculation(stream, threshold)
 
     // convert stream to dataSet (stream to batch to make predictions)
     val batchTable: Table = tableEnv.fromDataStream(batchStreamWithFeatures)
 
     //define output location name:
-    val outputLocation = "AAPL_batch_big4"
+    val outputLocation = "AAPL_batch_big5"
 
 
 
@@ -71,9 +101,9 @@ object Main {
         numFiles = 1, // optional: write to a single file
         writeMode = WriteMode.NO_OVERWRITE)) // optional: override existing files
 
-    // **************************** Read in pmml SVM-model: (generated in R) ****************************
 
 
+*/
     env.execute()
 
 
