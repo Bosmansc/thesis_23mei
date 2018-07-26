@@ -8,8 +8,7 @@ import org.apache.flink.table.api.scala._
 import thesis.StockQuotes
 
 
-
-case class RSITypes(stockTime: Timestamp, stockName: String,  lastPrice:Double, RSI: Double, RSI_signal: Int, RSI_direction:Int )
+case class RSITypes(stockTime: Timestamp, stockName: String, lastPrice: Double, RSI: Double, RSI_signal: Int, RSI_direction: Int)
 
 object RSI {
 
@@ -21,7 +20,7 @@ object RSI {
     val tableEnv = TableEnvironment.getTableEnvironment(env)
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
-    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime, 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
 
 
     // Relative Strength Index
@@ -42,20 +41,20 @@ object RSI {
     val rsi_table = rsi.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double)]
 
 
-    tableEnv.registerDataStream("rsi_table_1", rsi_table, 'stockTime, 'stockName, 'lastPrice, 'lastPriceLag, 'difference, 'posDifference, 'negDifference, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("rsi_table_1", rsi_table, 'stockTime, 'stockName, 'lastPrice, 'lastPriceLag, 'difference, 'posDifference, 'negDifference, 'UserActionTime.proctime)
 
     val rsi_table_1 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, posDifference, negDifference, " +
 
       "                                 ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) ) as RS," +
 
-      "                                  100 - 100/( 1 + ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )) as RSI"  +
+      "                                  100 - 100/( 1 + ( AVG(posDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )/( AVG(negDifference) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )) as RSI" +
 
       "                                   FROM rsi_table_1")
 
-    val RSIsignal_table = rsi_table_1.toAppendStream[( Timestamp, String, Double, Double, Double, Double, Double)]
+    val RSIsignal_table = rsi_table_1.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double)]
 
 
-    tableEnv.registerDataStream("RSIsignal_table", RSIsignal_table, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS , 'RSI, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("RSIsignal_table", RSIsignal_table, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS, 'RSI, 'UserActionTime.proctime)
 
     val rsi_table_2 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, posDifference, negDifference, " +
       "                                 RS, " +
@@ -63,10 +62,10 @@ object RSI {
 
       "                                   FROM RSIsignal_table")
 
-    val RSIsignal_table2 = rsi_table_2.toAppendStream[( Timestamp, String, Double, Double, Double, Double, Double, Double)]
+    val RSIsignal_table2 = rsi_table_2.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double, Double)]
 
 
-    tableEnv.registerDataStream("RSIsignal_table_NaN", RSIsignal_table2, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS , 'RS1, 'RSI, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("RSIsignal_table_NaN", RSIsignal_table2, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS, 'RS1, 'RSI, 'UserActionTime.proctime)
 
     val rsi_table_3 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, posDifference, negDifference, " +
       "                                 RS1, " +
@@ -74,18 +73,18 @@ object RSI {
 
       "                                   FROM RSIsignal_table_NaN")
 
-    val RSIsignal_table3 = rsi_table_3.toAppendStream[( Timestamp, String, Double, Double, Double, Double, Double, Double)]
+    val RSIsignal_table3 = rsi_table_3.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double, Double)]
 
 
-    tableEnv.registerDataStream("RSIsignal_table2", RSIsignal_table3, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS ,'RSlag, 'RSI, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("RSIsignal_table2", RSIsignal_table3, 'stockTime, 'stockName, 'lastPrice, 'posDifference, 'negDifference, 'RS, 'RSlag, 'RSI, 'UserActionTime.proctime)
 
     val rsi_lag_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, RSI," +
       "                                    SUM(RSI)OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - RSI  as RSIlag " +
-      "                                    FROM RSIsignal_table2" )
+      "                                    FROM RSIsignal_table2")
 
-    val rsi_lag_stream = rsi_lag_table.toAppendStream[( Timestamp,String, Double,Double, Double)]
+    val rsi_lag_stream = rsi_lag_table.toAppendStream[(Timestamp, String, Double, Double, Double)]
 
-    tableEnv.registerDataStream("lagRSI", rsi_lag_stream, 'stockTime, 'stockName, 'lastPrice, 'RSI, 'RSIlag, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("lagRSI", rsi_lag_stream, 'stockTime, 'stockName, 'lastPrice, 'RSI, 'RSIlag, 'UserActionTime.proctime)
 
 
     /*
@@ -109,9 +108,8 @@ object RSI {
       "                                       WHEN RSI <= RSIlag AND RSI > 30 AND RSI < 70 THEN -1 ELSE 0 END AS RSI_direction  " +
 
       "                                       FROM  lagRSI" +
-     // "                                       WHERE stockName = 'ABT UN Equity'" +
+      // "                                       WHERE stockName = 'ABT UN Equity'" +
       " ")
-
 
 
     RSI_signal_table.toAppendStream[(RSITypes)]
@@ -217,7 +215,6 @@ object RSI {
      */
 
   }
-
 
 
 }

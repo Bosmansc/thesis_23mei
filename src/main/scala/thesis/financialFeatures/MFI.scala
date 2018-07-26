@@ -8,8 +8,7 @@ import org.apache.flink.table.api.scala._
 import thesis.StockQuotes
 
 
-
-case class MFITypes(stockTime: Timestamp, stockName: String, lastPrice:Double, moneyFlowIndex:Double, MFI_signal: Int, moneyFlowIndex_direction: Int)
+case class MFITypes(stockTime: Timestamp, stockName: String, lastPrice: Double, moneyFlowIndex: Double, MFI_signal: Int, moneyFlowIndex_direction: Int)
 
 object MFI {
 
@@ -21,7 +20,7 @@ object MFI {
     val tableEnv = TableEnvironment.getTableEnvironment(env)
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
-    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime, 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
 
 
 
@@ -31,10 +30,9 @@ object MFI {
       "                          FROM stockTable ")
 
 
+    val mfi_tbl = mfi.toAppendStream[(Timestamp, String, Double, Double, Double)]
 
-    val mfi_tbl = mfi.toAppendStream[(Timestamp, String, Double,Double, Double)]
-
-    tableEnv.registerDataStream("mfi_table_1", mfi_tbl, 'stockTime, 'stockName, 'lastPrice, 'typicalPrice, 'moneyFlow, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("mfi_table_1", mfi_tbl, 'stockTime, 'stockName, 'lastPrice, 'typicalPrice, 'moneyFlow, 'UserActionTime.proctime)
 
     // negative of positive MF is defined by looking at the typical price rise or decline, not the MoneFlow!!
     val mfi_tbl_1 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, " +
@@ -49,7 +47,7 @@ object MFI {
 
     val mfi_tbl_2 = mfi_tbl_1.toAppendStream[(Timestamp, String, Double, Double, Double)]
 
-    tableEnv.registerDataStream("mfi_table_2", mfi_tbl_2, 'stockTime, 'stockName, 'lastPrice, 'posMoneyFlow, 'negMoneyFlow, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("mfi_table_2", mfi_tbl_2, 'stockTime, 'stockName, 'lastPrice, 'posMoneyFlow, 'negMoneyFlow, 'UserActionTime.proctime)
 
     val mfi_tbl_3 = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, " +
 
@@ -59,11 +57,11 @@ object MFI {
       "                               100 - 100/( 1 + ( (AVG(posMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) )/" +
       "                               ( AVG(negMoneyFlow) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) ) ) )as moneyFlowIndex" +
 
-      "                               FROM mfi_table_2 " )
+      "                               FROM mfi_table_2 ")
 
     val mfi_stream = mfi_tbl_3.toAppendStream[(Timestamp, String, Double, Double, Double)]
 
-    tableEnv.registerDataStream("mfi_signal", mfi_stream, 'stockTime, 'stockName, 'lastPrice, 'moneyRatio, 'moneyFlowIndex, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("mfi_signal", mfi_stream, 'stockTime, 'stockName, 'lastPrice, 'moneyRatio, 'moneyFlowIndex, 'UserActionTime.proctime)
 
     // lag table:
 
@@ -75,7 +73,7 @@ object MFI {
     val mfi_lag_table = mfi_lag.toAppendStream[(Timestamp, String, Double, Double, Double)]
 
 
-    tableEnv.registerDataStream("mfi_lag_table", mfi_lag_table, 'stockTime, 'stockName, 'lastPrice,  'moneyFlowIndex, 'moneyFlowIndexLag, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("mfi_lag_table", mfi_lag_table, 'stockTime, 'stockName, 'lastPrice, 'moneyFlowIndex, 'moneyFlowIndexLag, 'UserActionTime.proctime)
 
 
 
@@ -101,15 +99,13 @@ object MFI {
       "                                        WHEN moneyFlowIndex <= moneyFlowIndexLag AND moneyFlowIndex >20 AND moneyFlowIndex < 80 THEN -1 ELSE 0 END AS moneyFlowIndex_direction" +
       "" +
       "                                       FROM mfi_lag_table" +
-   //   "                                        WHERE stockName = 'ABBV UN Equity' " +
+      //   "                                        WHERE stockName = 'ABBV UN Equity' " +
       "                                        ")
-
 
 
     mfi_signal_table.toAppendStream[(MFITypes)]
 
   }
-
 
 
 }

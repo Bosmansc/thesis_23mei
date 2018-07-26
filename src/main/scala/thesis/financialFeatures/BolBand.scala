@@ -8,8 +8,7 @@ import org.apache.flink.table.api.scala._
 import thesis.StockQuotes
 
 
-
-case class BolBandtypes(stockTime: Timestamp, stockName: String, lastPrice:Double, lastPriceLag: Double, BB_signal:Int, BB_direction:Int )
+case class BolBandtypes(stockTime: Timestamp, stockName: String, lastPrice: Double, lastPriceLag: Double, BB_signal: Int, BB_direction: Int)
 
 object BolBand {
 
@@ -21,7 +20,7 @@ object BolBand {
     val tableEnv = TableEnvironment.getTableEnvironment(env)
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
-    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime, 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
 
     // Financial measure Bollinger Bands,
 
@@ -45,9 +44,9 @@ object BolBand {
       "                           FROM stockTable" +
       "                           ")
 
-    val bol_band_table = BB.toAppendStream[( Timestamp,String, Double,Double, Double, Double)]
+    val bol_band_table = BB.toAppendStream[(Timestamp, String, Double, Double, Double, Double)]
 
-    tableEnv.registerDataStream("bol_band_table", bol_band_table, 'stockTime, 'stockName, 'lastPrice, 'BB_middleBand, 'BB_upperBound, 'BB_lowerBound, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("bol_band_table", bol_band_table, 'stockTime, 'stockName, 'lastPrice, 'BB_middleBand, 'BB_upperBound, 'BB_lowerBound, 'UserActionTime.proctime)
 
     // if lastPrice from previous  minute is higher or equal to the BB-lower bound from prev minute
     // and the current lastPrice is lower than the upperbound than SELL
@@ -71,14 +70,13 @@ object BolBand {
       "                                 case when BB_middleBand > 0 OR BB_middleBand < 0 OR BB_middleBand =0 then BB_middleBand else 0 end ," +
       "                                 case when BB_upperBound >= 0 OR BB_upperBound < 0  then BB_upperBound else 0 end ," +
       "                                 case when BB_lowerBound >= 0 OR BB_lowerBound < 0  then BB_lowerBound else 0 end " +
-      "                                 "  +
+      "                                 " +
       "                                 FROM bol_band_table" +
       "                                 ")
 
-    val BBNan = BB_Nan.toAppendStream[( Timestamp,String, Double,Double, Double, Double)]
+    val BBNan = BB_Nan.toAppendStream[(Timestamp, String, Double, Double, Double, Double)]
 
-    tableEnv.registerDataStream("BBNan", BBNan, 'stockTime, 'stockName, 'lastPrice, 'BB_middleBand, 'BB_upperBound, 'BB_lowerBound, 'UserActionTime.proctime )
-
+    tableEnv.registerDataStream("BBNan", BBNan, 'stockTime, 'stockName, 'lastPrice, 'BB_middleBand, 'BB_upperBound, 'BB_lowerBound, 'UserActionTime.proctime)
 
 
     val lag_table = tableEnv.sqlQuery("SELECT stockTime, stockName , lastPrice, BB_middleBand, BB_upperBound, BB_lowerBound," +
@@ -91,9 +89,9 @@ object BolBand {
 
       "                               FROM  BBNan ")
 
-    val lagTable = lag_table.toAppendStream[( Timestamp,String, Double,Double, Double, Double, Double, Double, Double)]
+    val lagTable = lag_table.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double, Double, Double)]
 
-    tableEnv.registerDataStream("bol_band_table_signal", lagTable, 'stockTime, 'stockName, 'lastPrice, 'BB_middleBand, 'BB_upperBound, 'BB_lowerBound, 'lastPriceLag , 'BB_upperBoundLag, 'BB_lowerBoundLag, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("bol_band_table_signal", lagTable, 'stockTime, 'stockName, 'lastPrice, 'BB_middleBand, 'BB_upperBound, 'BB_lowerBound, 'lastPriceLag, 'BB_upperBoundLag, 'BB_lowerBoundLag, 'UserActionTime.proctime)
 
 
     /*
@@ -116,7 +114,7 @@ object BolBand {
       "                                       WHEN lastPriceLag >= BB_lowerBoundLag AND lastPrice < BB_lowerBound THEN 2 ELSE 0 END as BB_signal  " +
 
       "                                       FROM  bol_band_table_signal" +
-    //  "                                       WHERE stockName = 'ABT UN Equity' " +
+      //  "                                       WHERE stockName = 'ABT UN Equity' " +
       "")
 
     // signal: (lastPriceLag included for response variable calculation in FeatureCalculation)
@@ -126,19 +124,17 @@ object BolBand {
       "                                 " +
       "                                       CASE WHEN lastPrice < BB_lowerBound THEN 1 " +
       "                                       WHEN lastPrice < BB_upperBound AND lastPrice > BB_middleBand THEN 1" +
-      "                                       WHEN lastPrice > BB_upperBound THEN -1" +
-      "                                       WHEN lastPrice < BB_middleBand AND lastPrice > BB_lowerBound THEN -1 ELSE 0 END as BB_direction " +
+      "                                       WHEN lastPrice >= BB_upperBound THEN -1" +
+      "                                       WHEN lastPrice <= BB_middleBand AND lastPrice >= BB_lowerBound THEN -1 ELSE 0 END as BB_direction " +
 
       "                                       FROM  bol_band_table_signal" +
       "" +
-      "                                       " )
-
+      "                                       ")
 
 
     BB_signal_table.toAppendStream[(BolBandtypes)]
 
   }
-
 
 
 }

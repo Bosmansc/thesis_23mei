@@ -12,7 +12,7 @@ public class MainProducer {
         // String FILE_NAME = "OriginallData";
         //  String FILE_NAME = "SmallData";
         //  String FILE_NAME = "AAPL_big";
-        String FILE_NAME = "C:\\Users\\ceder\\Documents\\Thesis\\stock_data\\AAPL_big";
+        String FILE_NAME = "C:\\Users\\ceder\\Documents\\Thesis\\stock_data\\XOM_big";
 
         StockExchange stockExchange = new StockExchange();
 

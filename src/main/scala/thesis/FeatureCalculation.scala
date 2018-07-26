@@ -8,13 +8,13 @@ import org.apache.flink.table.api.TableEnvironment
 import org.apache.flink.table.api.scala._
 import thesis.financialFeatures._
 
-case class SignalAndDirectionTypes(SMA_signal:Int, SMA_direction: Int, BB_signal: Int, BB_direction:Int, CCI_signal:Int, CCI_direction:Int,
-                                   stoch_signal: Int, stoch_direction:Int, RSI_signal:Int, RSI_direction:Int, MFI_signal:Int, moneyFlowIndex_direction:Int,
-                                   chaikin_signal:Int, chaikin_direction:Int, willR_signal:Int, williamsR_direction:Int)  {
+case class SignalAndDirectionTypes(SMA_signal: Int, SMA_direction: Int, BB_signal: Int, BB_direction: Int, CCI_signal: Int, CCI_direction: Int,
+                                   stoch_signal: Int, stoch_direction: Int, RSI_signal: Int, RSI_direction: Int, MFI_signal: Int, moneyFlowIndex_direction: Int,
+                                   chaikin_signal: Int, chaikin_direction: Int, willR_signal: Int, williamsR_direction: Int) {
 
   def toVector = DenseVector(SMA_signal, SMA_direction, BB_signal, BB_direction, CCI_signal, CCI_direction,
-    stoch_signal, stoch_direction, RSI_signal, RSI_direction,  MFI_signal, moneyFlowIndex_direction,
-    chaikin_signal, chaikin_direction,  willR_signal, williamsR_direction)
+    stoch_signal, stoch_direction, RSI_signal, RSI_direction, MFI_signal, moneyFlowIndex_direction,
+    chaikin_signal, chaikin_direction, willR_signal, williamsR_direction)
 }
 
 object FeatureCalculation {
@@ -26,46 +26,46 @@ object FeatureCalculation {
   env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
 
-  def  calculation (stream: DataStream[StockQuotes]): DataStream[  SignalAndDirectionTypes] = {
- // def  calculation (stream: DataStream[StockQuotes]): DataStream[(Timestamp,String,  Double,Double,  Int,Int,  Int,Int,  Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int, Int)] = {
- // def  calculation (stream: DataStream[StockQuotes], threshold: Double): DataStream[(Timestamp, String, Double,Double, Int, Int,  Int, Int,  Int,  Int,  Int,  Int, Int)] = {
+  def calculation(stream: DataStream[StockQuotes]): DataStream[SignalAndDirectionTypes] = {
+    // def  calculation (stream: DataStream[StockQuotes]): DataStream[(Timestamp,String,  Double,Double,  Int,Int,  Int,Int,  Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int, Int)] = {
+    // def  calculation (stream: DataStream[StockQuotes], threshold: Double): DataStream[(Timestamp, String, Double,Double, Int, Int,  Int, Int,  Int,  Int,  Int,  Int, Int)] = {
 
     // hier alle streams joinen naar één stream = basetable
 
     // SMA signal is calculated
     val sma10 = SMA.calculateSMA(stream, tableEnv, env)
-    tableEnv.registerDataStream("SMA10", sma10, 'stockTime, 'stockName,'lastPrice, 'SMA_signal,'SMA_direction, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("SMA10", sma10, 'stockTime, 'stockName, 'lastPrice, 'SMA_signal, 'SMA_direction, 'UserActionTime.proctime)
 
     // bb signal is calculated
     val bb = BolBand.calculateBolBand(stream, tableEnv, env)
-    tableEnv.registerDataStream("bb", bb, 'stockTime, 'stockName,'lastPrice, 'lastPriceLag, 'BB_signal,'BB_direction, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("bb", bb, 'stockTime, 'stockName, 'lastPrice, 'lastPriceLag, 'BB_signal, 'BB_direction, 'UserActionTime.proctime)
 
     //CCI signal is calculated
     val cci = CCI.calculateCCI(stream, tableEnv, env)
-    tableEnv.registerDataStream("cci", cci, 'stockTime, 'stockName, 'CCI_signal,'CCI_direction, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("cci", cci, 'stockTime, 'stockName, 'CCI_signal, 'CCI_direction, 'UserActionTime.proctime)
 
     // stoch is calculated
     val stoch = Stoch.calculateStoch(stream, tableEnv, env)
-    tableEnv.registerDataStream("stoch", stoch, 'stockTime, 'stockName, 'stoch_signal, 'stoch_direction, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("stoch", stoch, 'stockTime, 'stockName, 'stoch_signal, 'stoch_direction, 'UserActionTime.proctime)
 
     // RSI calculated
     val rsi = RSI.calculateRSI(stream, tableEnv, env)
-    tableEnv.registerDataStream("rsi", rsi, 'stockTime, 'stockName, 'lastPrice, 'RSI, 'RSI_signal,'RSI_direction, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("rsi", rsi, 'stockTime, 'stockName, 'lastPrice, 'RSI, 'RSI_signal, 'RSI_direction, 'UserActionTime.proctime)
 
     // MFI calculated (here lastPrice is added)
     val mfi = MFI.calculateMFI(stream, tableEnv, env)
-    tableEnv.registerDataStream("mfi", mfi, 'stockTime, 'stockName, 'lastPrice,'moneyFlowIndex, 'MFI_signal, 'moneyFlowIndex_direction, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("mfi", mfi, 'stockTime, 'stockName, 'lastPrice, 'moneyFlowIndex, 'MFI_signal, 'moneyFlowIndex_direction, 'UserActionTime.proctime)
 
     // chaiking calculated
     val chaikin = Chaikin.calculateChaikin(stream, tableEnv, env)
-    tableEnv.registerDataStream("chaikin", chaikin, 'stockTime, 'stockName, 'lastPrice, 'chaikin, 'chaikin_signal, 'chaikin_direction, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("chaikin", chaikin, 'stockTime, 'stockName, 'lastPrice, 'chaikin, 'chaikin_signal, 'chaikin_direction, 'UserActionTime.proctime)
 
     // williamR calculated
     val williamR = WilliamR.calculateWilliamR(stream, tableEnv, env)
-    tableEnv.registerDataStream("williamR", williamR, 'stockTime, 'stockName, 'lastPrice, 'williamsR, 'willR_signal, 'williamsR_direction,'UserActionTime.proctime )
+    tableEnv.registerDataStream("williamR", williamR, 'stockTime, 'stockName, 'lastPrice, 'williamsR, 'willR_signal, 'williamsR_direction, 'UserActionTime.proctime)
 
     // WMA not calculated!
-  //  val wma = WMA.calculateWMA(stream, tableEnv, env)
+    //  val wma = WMA.calculateWMA(stream, tableEnv, env)
 
     // SMA.calculateSMA(stream, tableEnv, env)
     // CCI.calculateCCI(stream, tableEnv, env)
@@ -76,7 +76,6 @@ object FeatureCalculation {
     // Chaikin.calculateChaikin(stream, tableEnv, env)
     // WilliamR.calculateWilliamR(stream, tableEnv, env)
     // WMA.calculateWMA(stream, tableEnv, env)
-
 
 
     // **************************** merge all signals to BASETABLE and add responseVariable based on threshold for STREAMING model: ****************************
@@ -96,21 +95,17 @@ object FeatureCalculation {
       "                                     AND stoch.stockName = rsi.stockName AND rsi.stockName = mfi.stockName AND mfi.stockName = chaikin.stockName " +
       "                                     AND chaikin.stockName = williamR.stockName" +
       "                                     " +
-  //     "                                      AND williamR.stockName ='AAPL UW Equity' " +
-      "                                   " )
+      //     "                                      AND williamR.stockName ='AAPL UW Equity' " +
+      "                                   ")
 
 
-
-
-    val BaseTableStream = baseTable.toAppendStream[(Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
+    val BaseTableStream = baseTable.toAppendStream[(Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int)]
 
 
 
     // stream output:
-   // baseTable.toAppendStream[(  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
+    // baseTable.toAppendStream[(  Int,Int,  Int,Int,  Int,Int,  Int, Int, Int,Int, Int, Int, Int,Int,Int, Int)]
     baseTable.toAppendStream[(SignalAndDirectionTypes)]
-
-
 
 
   }

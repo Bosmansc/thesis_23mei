@@ -8,8 +8,7 @@ import org.apache.flink.table.api.scala._
 import thesis.StockQuotes
 
 
-
-case class WilliamRTypes(stockTime: Timestamp, stockName: String, lastPrice: Double,williamsR:Double, willR_signal :Int, williamsR_direction:Int )
+case class WilliamRTypes(stockTime: Timestamp, stockName: String, lastPrice: Double, williamsR: Double, willR_signal: Int, williamsR_direction: Int)
 
 object WilliamR {
 
@@ -21,7 +20,7 @@ object WilliamR {
     val tableEnv = TableEnvironment.getTableEnvironment(env)
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
 
-    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime , 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("stockTable", stream, 'stockName, 'stockTime, 'priceOpen, 'high, 'low, 'lastPrice, 'number, 'volume, 'UserActionTime.proctime)
 
 
     // William' %R
@@ -33,10 +32,10 @@ object WilliamR {
       "                           ( MAX(high) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) - MIN(low) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 14 PRECEDING AND CURRENT ROW) ) as williamsR " +
       "                           FROM stockTable")
 
-    val wilR_stream = wilR.toAppendStream[(Timestamp, String, Double,Double)]
+    val wilR_stream = wilR.toAppendStream[(Timestamp, String, Double, Double)]
 
     // lag table:
-    tableEnv.registerDataStream("willR_lag", wilR_stream, 'stockTime, 'stockName, 'lastPrice,  'williamsR, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("willR_lag", wilR_stream, 'stockTime, 'stockName, 'lastPrice, 'williamsR, 'UserActionTime.proctime)
 
     val willR_lag = tableEnv.sqlQuery("SELECT stockTime, stockName,  lastPrice, williamsR, SUM(williamsR) OVER (PARTITION BY stockName ORDER BY UserActionTime ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) - williamsR as williamsRLag" +
       "                             " +
@@ -52,7 +51,7 @@ object WilliamR {
      1 = BUY, 2 = SELL, 0 = HOLD
       */
 
-    tableEnv.registerDataStream("willR_big_table", willR_lag_table, 'stockTime, 'stockName, 'lastPrice,  'williamsR, 'williamsRLag, 'UserActionTime.proctime )
+    tableEnv.registerDataStream("willR_big_table", willR_lag_table, 'stockTime, 'stockName, 'lastPrice, 'williamsR, 'williamsRLag, 'UserActionTime.proctime)
 
     //table to check outcome:
     val willR_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, ROUND(williamsR,2)," +
@@ -64,18 +63,14 @@ object WilliamR {
       "                                       WHEN  williamsRLag >= williamsR THEN -1 ELSE 0 END AS williamsR_direction" +
       "" +
       "                                       FROM willR_big_table" +
-   //   "                                       WHERE stockName = 'ABBV UN Equity'" +
+      //   "                                       WHERE stockName = 'ABBV UN Equity'" +
       "                                        ")
-
-
-
 
 
     willR_signal_table.toAppendStream[(WilliamRTypes)]
 
 
   }
-
 
 
 }

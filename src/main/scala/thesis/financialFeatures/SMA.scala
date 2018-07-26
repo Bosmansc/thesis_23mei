@@ -9,7 +9,7 @@ import org.apache.flink.table.api.scala._
 import thesis.StockQuotes
 
 
-case class SMAtypes(stockTime: Timestamp, stockName: String, lastPrice:Double, SMA_signal: Int, SMA_direction:Int)
+case class SMAtypes(stockTime: Timestamp, stockName: String, lastPrice: Double, SMA_signal: Int, SMA_direction: Int)
 
 object SMA {
 
@@ -33,7 +33,7 @@ object SMA {
 
     val SMA10_table = SMA10.toAppendStream[(Timestamp, String, Double, Double)]
 
-    tableEnv.registerDataStream("SMA10", SMA10_table, 'stockTime, 'stockName,'lastPrice, 'SMA10, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("SMA10", SMA10_table, 'stockTime, 'stockName, 'lastPrice, 'SMA10, 'UserActionTime.proctime)
 
     val SMA100 = tableEnv.sqlQuery("SELECT stockTime, stockName ,  ROUND(AVG(lastPrice) " +
       "                           OVER ( PARTITION BY stockName" +
@@ -84,16 +84,16 @@ object SMA {
       "                                 WHEN SMA10.SMA10 >= SMA100.SMA100 AND SMA10_lag.SMA10lag < SMA100_lag.SMA100lag THEN 1 ELSE 0 END as SMA_signal," +
       "" +
       "                                 CASE WHEN SMA10_lag.SMA10lag < SMA10.lastPrice THEN 1 " +
-      "                                 WHEN SMA10_lag.SMA10lag < SMA10.lastPrice THEN -1 ELSE 0 END AS direction" +
+      "                                 WHEN SMA10_lag.SMA10lag >= SMA10.lastPrice THEN -1 ELSE 0 END AS direction" +
 
       "                                 FROM SMA10, SMA100, SMA10_lag, SMA100_lag " +
       "                                 WHERE SMA10.stockTime = SMA100.stockTime AND SMA10.stockName = SMA100.stockName " +
       "                                 AND SMA10_lag.stockTime = SMA10.stockTime AND   SMA10.stockName =  SMA10_lag.stockName" +
       "                                 AND SMA100_lag.stockTime = SMA10.stockTime AND   SMA10.stockName =  SMA100_lag.stockName")
 
-    val SMA_signal_big_table = SMA_signal_big.toAppendStream[(Timestamp, String, Double,Double, Double, Double, Double, Int, Int)]
+    val SMA_signal_big_table = SMA_signal_big.toAppendStream[(Timestamp, String, Double, Double, Double, Double, Double, Int, Int)]
 
-    tableEnv.registerDataStream("SMA_signal_big_table", SMA_signal_big_table, 'stockTime, 'stockName,'lastPrice, 'SMA10, 'SMA100, 'SMA10lag, 'SMA100lag, 'SMA_signal, 'SMA_direction, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("SMA_signal_big_table", SMA_signal_big_table, 'stockTime, 'stockName, 'lastPrice, 'SMA10, 'SMA100, 'SMA10lag, 'SMA100lag, 'SMA_signal, 'SMA_direction, 'UserActionTime.proctime)
 
     val SMA_signal_table = tableEnv.sqlQuery("SELECT stockTime,stockName ,lastPrice, SMA_signal, SMA_direction" +
       "                                       " +
@@ -103,7 +103,6 @@ object SMA {
 
     SMA_signal_table.toAppendStream[(SMAtypes)]
   }
-
 
 
 }

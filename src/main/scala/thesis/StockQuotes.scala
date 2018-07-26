@@ -7,17 +7,17 @@ case class StockQuotes(stockName: String, stockTime: Timestamp, priceOpen: Doubl
 
 object StockQuotes {
 
-  def getTimestamp(s: String) : Timestamp =  {
+  def getTimestamp(s: String): Timestamp = {
 
-      val format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm")
-      new Timestamp(format.parse(s).getTime)
+    val format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm")
+    new Timestamp(format.parse(s).getTime)
 
   }
 
   def fromString(s: String): StockQuotes = {
     val parts = s.split(",")
 
-  //  val DateTime = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm")
+    //  val DateTime = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm")
 
 
     new StockQuotes(
