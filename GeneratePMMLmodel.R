@@ -4,19 +4,35 @@ if(!require(caret)) { install.packages("caret"); library(caret); }
 if(!require(XML)) { install.packages("XML"); library(XML); }
 if(!require(pmml)) { install.packages("pmml"); library(pmml); }
 if(!require(randomForest)) { install.packages("randomForest"); library(randomForest); }
+if(!require(chron)) { install.packages("chron"); library(chron); }
+if(!require(plyr)) { install.packages("plyr"); library(plyr); }
 
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/AAPL_batch_big_R.csv")  # read csv file 
-mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/XOM_big_bigger2.csv")  # read csv file 
-mydata <- mydata[,5:21]
-mydata[,17] <- factor(mydata[,17])
-#mydataSmall <- mydata[1:500,]
+#mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/XOM_big_bigger2.csv")  # read csv file 
 
-colnames(mydata) <- c("SMA_signal", "SMA_direction", "BB_signal", "BB_direction", "CCI_signal", "CCI_direction",
+## JNJ:
+#mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/JNJ_Big_0.01_2.csv")  # read csv file 
+#mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/JNJ_Big_0.1.csv")  # read csv file 
+#mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/JNJ_Big_0.2.csv")  # read csv file 
+mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/JNJ_Big_0.5.csv")  # read csv file 
+
+colnames(mydata) <- c("dateTime", "name", "lastPrice", "lastPriceLag",  "SMA_signal", "SMA_direction", "BB_signal", "BB_direction", "CCI_signal", "CCI_direction",
                       "stoch_signal", "stoch_direction", "RSI_signal", "RSI_direction", "MFI_signal", "moneyFlowIndex_direction",
-                      "chaikin_signal", "chaikin_direction", "willR_signal", "williamsR_direction", "ResponseVariable")
+                      "chaikin_signal", "chaikin_direction", "willR_signal", "williamsR_direction", "momentum")
+mydata[,1] <- substr(mydata[,1], 0,19)
 str(mydata)
 
-table(mydata$ResponseVariable)
+
+dtparts <- t(as.data.frame(strsplit(mydata[,1],' ')))
+row.names(dtparts) = NULL
+thetimes <- chron(dates=dtparts[,1],times=dtparts[,2], format=c('y-m-d','h:m:s'))
+class(mydata[,1])
+mydata[,1] <-  thetimes
+
+mydata <- mydata[do.call(order, mydata), ] 
+
+## overview
+table(mydata$momentum)
 table(mydata$SMA_signal)
 table(mydata$SMA_direction)
 table(mydata$BB_signal)
@@ -33,33 +49,53 @@ table(mydata$chaikin_direction)
 table(mydata$willR_signal)
 table(mydata$williamsR_direction)
 
+mydata$momentum <- factor(mydata$momentum)
 
-#######################################
-################# SVM ################# 
-#######################################
+mydata$SMA_signal <- factor(mydata$SMA_signal)
+mydata$SMA_direction <- factor(mydata$SMA_direction)
+mydata$BB_signal <- factor(mydata$BB_signal)
+mydata$BB_direction <- factor(mydata$BB_direction)
+mydata$CCI_direction <- factor(mydata$CCI_direction)
+mydata$CCI_signal <- factor(mydata$CCI_signal)
+mydata$stoch_signal <- factor(mydata$stoch_signal)
+mydata$stoch_direction <- factor(mydata$stoch_direction)
+mydata$RSI_direction <- factor(mydata$RSI_direction)
+mydata$RSI_signal <- factor(mydata$RSI_signal)
+mydata$MFI_signal <- factor(mydata$MFI_signal)
+mydata$moneyFlowIndex_direction <- factor(mydata$moneyFlowIndex_direction)
+mydata$chaikin_signal <-factor(mydata$chaikin_signal)
+mydata$chaikin_direction <- factor(mydata$chaikin_direction)
+mydata$willR_signal <- factor(mydata$willR_signal)
+mydata$williamsR_direction <- factor(mydata$williamsR_direction)
+str(mydata)
 
-################# train the SVM, and make predictions ################# 
-svm_model <- svm(ResponseVariable ~ ., data=mydata)
-summary(svm_model)
-pred <- predict(svm_model,as.matrix(mydata[1:16]))
-table(pred,mydata[,17])
+## keep lastPrice per day
+mydata[,1] <- factor(substr(mydata[,1],2,10))  
 
-################# fine tune the svm model ################# 
-## fine tune the SVM-method
-x <- as.matrix(mydata[,1:16])
-y <- mydata[,17]
+## Aggregate
+a <- ddply(mydata, "dateTime", tail, 1)[,1:3]
 
-svm_tune <- tune(method = svm, train.x = x,train.y = y, kernel = "linear", ranges = list( gamma=c(.5,1)))
+basetable <- merge(x = mydata, y = a, by = 1)
 
-print(svm_tune)
+basetable$responseVariable <- factor(ifelse(basetable$lastPrice.x - basetable$lastPrice.y >= 0.2 , 1 , ifelse(basetable$lastPrice.y - basetable$lastPrice.x >= 0.2 , 2 , 0)))
+check <- basetable[, c("lastPrice.x", "lastPrice.y", "responseVariable") ]
 
-## train model after tuning
-svm_model_after_tune <- svm(ResponseVariable ~ ., data=mydata, kernel="radial", cost=1000, gamma=0.5)
-summary(svm_model_after_tune)
-pred <- predict(svm_model_after_tune,x)
+basetable <- basetable[, c(3, 5:21,24)]
+str(basetable)
+table(basetable$responseVariable)
 
-## evaluation of the model
-(result <- confusionMatrix(pred, y))
+## 389 minuten per dag, 1945 per week
+
+## 1 week:
+basetableTrain1 <- basetable[1:1945,]
+basetableTest1 <- basetable[1945:2200,]
+table(basetableTrain1$responseVariable)
+
+## 2 weken:
+basetableTrain2 <- basetable[1:3890,]
+basetableTest2 <- basetable[3891:4091,]
+table(basetableTrain2$responseVariable)
+
 
 
 #################################################
@@ -67,12 +103,12 @@ pred <- predict(svm_model_after_tune,x)
 #################################################
 
 ################# train the SVM, and make predictions ################# 
-rf <-randomForest(ResponseVariable~.,data=mydata, ntree=100) 
+rf <-randomForest(responseVariable~.,data=basetableTrain2, ntree=100) 
 print(rf)
 plot(rf)
 
 ## evaluation of the model
-(result <- confusionMatrix(predict(rf), mydata[,17]))
+(result <- confusionMatrix(predict(rf), basetableTrain2$responseVariable))
 
 ################# fine tune the RF model ################# 
 mtry <- tuneRF(x = mydata, y = mydata$ResponseVariable, mtryStart = 5, ntreeTry = 5, stepFactor = 50, improve = 0.0001, plot = TRUE, trace = TRUE)

@@ -71,7 +71,7 @@ object FeatureCalculationBatch {
 
     // **************************** stream for batch processing to generate the ML model ****************************
 
-    val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, ROUND(bb.lastPriceLag,2)," +
+    val baseTable = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, mfi.lastPrice, bb.lastPriceLag," +
       "                                      SMA10.SMA_signal, SMA10.SMA_direction,  bb.BB_signal, BB_direction,  cci.CCI_signal, CCI_direction, " +
       "                                      stoch.stoch_signal, stoch_direction,  rsi.RSI_signal, RSI_direction,  mfi.MFI_signal, moneyFlowIndex_direction," +
       "                                      chaikin.chaikin_signal, chaikin_direction,  williamR.willR_signal, williamsR_direction" +

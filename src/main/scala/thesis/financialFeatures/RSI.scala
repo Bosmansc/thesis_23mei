@@ -98,7 +98,7 @@ object RSI {
      */
 
     // big table to check the outcome:
-    val RSI_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName , lastPrice, ROUND(RSI,2)," +
+    val RSI_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName , lastPrice, RSI," +
       "                                       CASE WHEN RSI < 20 AND RSI > 0 AND RSI < RSIlag THEN 1 " +
       "                                       WHEN RSI > 80 AND RSI < 100 AND RSI > RSIlag THEN 2 ELSE 0 END as RSI_signal, " +
       "" +

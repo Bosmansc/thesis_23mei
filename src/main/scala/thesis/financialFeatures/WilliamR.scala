@@ -54,7 +54,7 @@ object WilliamR {
     tableEnv.registerDataStream("willR_big_table", willR_lag_table, 'stockTime, 'stockName, 'lastPrice, 'williamsR, 'williamsRLag, 'UserActionTime.proctime)
 
     //table to check outcome:
-    val willR_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, ROUND(williamsR,2)," +
+    val willR_signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, lastPrice, williamsR," +
 
       "                                       CASE WHEN williamsRLag >= -80 AND williamsR < -80 THEN 1 " +
       "                                       WHEN williamsRLag <= -20 AND williamsR > -20 THEN 2 ELSE 0 END as willR_signal," +

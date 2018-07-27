@@ -8,9 +8,9 @@ import org.apache.flink.table.api.TableEnvironment
 import org.apache.flink.table.api.scala._
 import thesis.financialFeatures._
 
-case class SignalAndDirectionTypes(SMA_signal: Int, SMA_direction: Int, BB_signal: Int, BB_direction: Int, CCI_signal: Int, CCI_direction: Int,
-                                   stoch_signal: Int, stoch_direction: Int, RSI_signal: Int, RSI_direction: Int, MFI_signal: Int, moneyFlowIndex_direction: Int,
-                                   chaikin_signal: Int, chaikin_direction: Int, willR_signal: Int, williamsR_direction: Int) {
+case class SignalAndDirectionTypes(SMA10:Double, SMA100:Double, SMA_signal: Int, SMA_direction: Int, BB_lowerBound:Double, BB_upperBound:Double, BB_middleBand:Double, BB_signal: Int, BB_direction: Int, CCI:Double, CCI_signal: Int, CCI_direction: Int,
+                                   D:Double, stoch_signal: Int, stoch_direction: Int, RSI:Double, RSI_signal: Int, RSI_direction: Int, moneyFlowIndex:Double, MFI_signal: Int, moneyFlowIndex_direction: Int,
+                                   chaikin:Double, chaikin_signal: Int, chaikin_direction: Int, williamsR:Double, willR_signal: Int, williamsR_direction: Int) {
 
   def toVector = DenseVector(SMA_signal, SMA_direction, BB_signal, BB_direction, CCI_signal, CCI_direction,
     stoch_signal, stoch_direction, RSI_signal, RSI_direction, MFI_signal, moneyFlowIndex_direction,
@@ -34,19 +34,19 @@ object FeatureCalculation {
 
     // SMA signal is calculated
     val sma10 = SMA.calculateSMA(stream, tableEnv, env)
-    tableEnv.registerDataStream("SMA10", sma10, 'stockTime, 'stockName, 'lastPrice, 'SMA_signal, 'SMA_direction, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("SMA10", sma10, 'stockTime, 'stockName, 'lastPrice, 'SMA10, 'SMA100, 'SMA_signal, 'SMA_direction, 'UserActionTime.proctime)
 
     // bb signal is calculated
     val bb = BolBand.calculateBolBand(stream, tableEnv, env)
-    tableEnv.registerDataStream("bb", bb, 'stockTime, 'stockName, 'lastPrice, 'lastPriceLag, 'BB_signal, 'BB_direction, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("bb", bb, 'stockTime, 'stockName, 'lastPrice, 'lastPriceLag,'BB_lowerBound, 'BB_upperBound, 'BB_middleBand, 'BB_signal, 'BB_direction, 'UserActionTime.proctime)
 
     //CCI signal is calculated
     val cci = CCI.calculateCCI(stream, tableEnv, env)
-    tableEnv.registerDataStream("cci", cci, 'stockTime, 'stockName, 'CCI_signal, 'CCI_direction, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("cci", cci, 'stockTime, 'stockName, 'CCI, 'CCI_signal, 'CCI_direction, 'UserActionTime.proctime)
 
     // stoch is calculated
     val stoch = Stoch.calculateStoch(stream, tableEnv, env)
-    tableEnv.registerDataStream("stoch", stoch, 'stockTime, 'stockName, 'stoch_signal, 'stoch_direction, 'UserActionTime.proctime)
+    tableEnv.registerDataStream("stoch", stoch, 'stockTime, 'stockName, 'D, 'stoch_signal, 'stoch_direction, 'UserActionTime.proctime)
 
     // RSI calculated
     val rsi = RSI.calculateRSI(stream, tableEnv, env)
@@ -82,9 +82,9 @@ object FeatureCalculation {
 
 
     val baseTable = tableEnv.sqlQuery("SELECT " +
-      "                                      SMA10.SMA_signal, SMA10.SMA_direction,  bb.BB_signal, BB_direction,  cci.CCI_signal, CCI_direction, " +
-      "                                      stoch.stoch_signal, stoch_direction,  rsi.RSI_signal, RSI_direction,  mfi.MFI_signal, moneyFlowIndex_direction," +
-      "                                      chaikin.chaikin_signal, chaikin_direction,  williamR.willR_signal, williamsR_direction" +
+      "                                      SMA10.SMA10, SMA10.SMA100, SMA10.SMA_signal, SMA10.SMA_direction, BB_lowerBound, BB_upperBound, BB_middleBand, bb.BB_signal, BB_direction, CCI,  cci.CCI_signal, CCI_direction, " +
+      "                                     D, stoch.stoch_signal, stoch_direction, RSI, rsi.RSI_signal, RSI_direction, moneyFlowIndex, mfi.MFI_signal, moneyFlowIndex_direction," +
+      "                                     chaikin, chaikin.chaikin_signal, chaikin_direction, williamsR, williamR.willR_signal, williamsR_direction" +
 
       "                                     FROM SMA10, bb, cci, stoch, rsi, mfi, chaikin, williamR" +
 
@@ -99,7 +99,7 @@ object FeatureCalculation {
       "                                   ")
 
 
-    val BaseTableStream = baseTable.toAppendStream[(Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int)]
+    val BaseTableStream = baseTable.toAppendStream[(SignalAndDirectionTypes)]
 
 
 

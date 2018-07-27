@@ -8,7 +8,7 @@ import org.apache.flink.table.api.scala._
 import thesis.StockQuotes
 
 
-case class CCItypes(stockTime: Timestamp, stockName: String, CCI_signal: Int, CCI_direction: Int)
+case class CCItypes(stockTime: Timestamp, stockName: String, CCI:Double, CCI_signal: Int, CCI_direction: Int)
 
 object CCI {
 
@@ -88,7 +88,7 @@ object CCI {
 
     // CCI signal:
 
-    val CCI_signal4 = tableEnv.sqlQuery("SELECT stockTime, stockName, " +
+    val CCI_signal4 = tableEnv.sqlQuery("SELECT stockTime, stockName, CCI, " +
       "                                   CASE WHEN CCIlag >= -100 AND CCI < -100  THEN 1 " +
       "                                   WHEN CCIlag <= 100 AND CCI > 100 THEN 2 ELSE 0 END as SMA_signal, " +
       "" +

@@ -8,7 +8,7 @@ import org.apache.flink.table.api.scala._
 import thesis.StockQuotes
 
 
-case class StochTypes(stockTime: Timestamp, stockName: String, stoch_signal: Int, stoch_direction: Int)
+case class StochTypes(stockTime: Timestamp, stockName: String, D:Double, stoch_signal: Int, stoch_direction: Int)
 
 object Stoch {
 
@@ -63,7 +63,7 @@ object Stoch {
 
 
     // signal:
-    val signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName," +
+    val signal_table = tableEnv.sqlQuery("SELECT stockTime, stockName, D," +
       "                                     CASE WHEN DLag >= 20  AND D < 20  THEN 1 " +
       "                                     WHEN DLag <= 80 AND D > 80 THEN 2 ELSE 0 END as Stoch_signal," +
       "" +

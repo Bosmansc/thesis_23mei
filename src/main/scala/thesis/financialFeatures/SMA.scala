@@ -9,7 +9,7 @@ import org.apache.flink.table.api.scala._
 import thesis.StockQuotes
 
 
-case class SMAtypes(stockTime: Timestamp, stockName: String, lastPrice: Double, SMA_signal: Int, SMA_direction: Int)
+case class SMAtypes(stockTime: Timestamp, stockName: String, lastPrice: Double, SMA10: Double, SMA100:Double, SMA_signal: Int, SMA_direction: Int)
 
 object SMA {
 
@@ -95,7 +95,7 @@ object SMA {
 
     tableEnv.registerDataStream("SMA_signal_big_table", SMA_signal_big_table, 'stockTime, 'stockName, 'lastPrice, 'SMA10, 'SMA100, 'SMA10lag, 'SMA100lag, 'SMA_signal, 'SMA_direction, 'UserActionTime.proctime)
 
-    val SMA_signal_table = tableEnv.sqlQuery("SELECT stockTime,stockName ,lastPrice, SMA_signal, SMA_direction" +
+    val SMA_signal_table = tableEnv.sqlQuery("SELECT stockTime,stockName ,lastPrice, SMA10, SMA100, SMA_signal, SMA_direction" +
       "                                       " +
       "                                       FROM  SMA_signal_big_table ")
 
