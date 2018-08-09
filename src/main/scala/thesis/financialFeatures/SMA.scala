@@ -80,13 +80,16 @@ object SMA {
 
 
     val SMA_signal_big = tableEnv.sqlQuery("SELECT SMA10.stockTime, SMA10.stockName, SMA10.lastPrice, SMA10.SMA10, SMA100.SMA100, SMA10_lag.SMA10lag, SMA100_lag.SMA100lag," +
-      "                                 CASE WHEN SMA10.SMA10 <= SMA100.SMA100 AND SMA10_lag.SMA10lag > SMA100_lag.SMA100lag THEN 2" +
-      "                                 WHEN SMA10.SMA10 >= SMA100.SMA100 AND SMA10_lag.SMA10lag < SMA100_lag.SMA100lag THEN 1 ELSE 0 END as SMA_signal," +
+
+      "                                 CASE WHEN SMA10_lag.SMA10lag < SMA100_lag.SMA100lag  AND SMA10.SMA10 > SMA100.SMA100 THEN 1" +
+      "                                " +
+      "                                 WHEN SMA10_lag.SMA10lag >= SMA100_lag.SMA100lag AND  SMA10.SMA10 < SMA100.SMA100 THEN 2 ELSE 0 END as SMA_signal," +
       "" +
       "                                 CASE WHEN SMA10_lag.SMA10lag < SMA10.lastPrice THEN 1 " +
       "                                 WHEN SMA10_lag.SMA10lag >= SMA10.lastPrice THEN -1 ELSE 0 END AS direction" +
 
       "                                 FROM SMA10, SMA100, SMA10_lag, SMA100_lag " +
+
       "                                 WHERE SMA10.stockTime = SMA100.stockTime AND SMA10.stockName = SMA100.stockName " +
       "                                 AND SMA10_lag.stockTime = SMA10.stockTime AND   SMA10.stockName =  SMA10_lag.stockName" +
       "                                 AND SMA100_lag.stockTime = SMA10.stockTime AND   SMA10.stockName =  SMA100_lag.stockName")

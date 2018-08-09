@@ -7,7 +7,9 @@ import io.radicalbit.flink.pmml.scala._
 import io.radicalbit.flink.pmml.scala.api.reader.ModelReader
 import org.apache.flink.core.fs.FileSystem.WriteMode
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks
 import org.apache.flink.streaming.api.scala.{DataStream, _}
+import org.apache.flink.streaming.api.watermark.Watermark
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer08
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema
 import org.apache.flink.table.api.scala._
@@ -17,12 +19,13 @@ import org.apache.flink.table.sinks.CsvTableSink
 
 object Main {
 
-  val kafkaName = "stock54" // to link kafka with stream producer
+  val kafkaName = "stock68" // to link kafka with stream producer
   def main(args: Array[String]) {
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setParallelism(1)
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
+   // env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
     //Configure Flink to perform a consistent checkpoint of a program’s operator state every 100000ms.
     //env.enableCheckpointing(100000)
@@ -40,12 +43,12 @@ object Main {
     // ******************************************************* DASHBOARD: *******************************************************
 
     // The difference between the next closing price when is stockQuote is considered to increase/decrase (recommended values: 0.01, 0.1, 0.2, 0.5, 0.75)
-    val threshold = 0
+    val threshold = 0.5
 
     // true or false to generate output stream (necessary for predictionModel
-    val streamModel = false
+    val streamModel = true
     // true or false to generate batch data, to generate extern model
-    val batchModel = true
+    val batchModel = false
     // true or false to make predictions (prediction model needs to be running
     val predictionModel = false
 
@@ -72,7 +75,7 @@ object Main {
       streamTime.print()
 
       //Load PMML model
-      val pathToPmml2 = "C:\\Users\\ceder\\Flink\\BatchStockData\\rf_AAPL.pmml"
+      val pathToPmml2 = "C:\\Users\\ceder\\Flink\\BatchStockData\\pmmlModels\\rf_AAPL.pmml"
 
       //Load PMML model
       val modelReader = ModelReader(pathToPmml2)
@@ -101,18 +104,18 @@ object Main {
 
     // ******************************************************* BATCH model: *******************************************************
     if(batchModel) {
-      val batchStreamWithFeatures = FeatureCalculation.calculation(stream)
+      val batchStreamWithFeatures = FeatureCalculationBatch.calculation(stream)
 
       // convert stream to dataSet (stream to batch to make predictions)
       val batchTable: Table = tableEnv.fromDataStream(batchStreamWithFeatures)
 
       //define output location name:
-      val outputLocation = "AAPLcontinuous"
+      val outputLocation = "C_big"
 
       // work with if: if return is to low: then write to sink
       batchTable.writeToSink(
         new CsvTableSink(
-          s"C:\\Users\\ceder\\Flink\\BatchStockData\\$outputLocation", // output path
+          s"C:\\Users\\ceder\\Flink\\BatchStockData\\batchData\\$outputLocation", // output path
           fieldDelim = ",", // optional: delimit files by '|'
           numFiles = 1, // optional: write to a single file
           writeMode = WriteMode.OVERWRITE)) // optional: override existing files
@@ -123,5 +126,14 @@ object Main {
     env.execute()
 
 
+  }
+}
+
+class TimestampExtractor extends AssignerWithPeriodicWatermarks[String] with Serializable {
+  override def extractTimestamp(e: String, prevElementTimestamp: Long) = {
+    e.split(",")(1).toLong
+  }
+  override def getCurrentWatermark(): Watermark = {
+    new Watermark(System.currentTimeMillis)
   }
 }

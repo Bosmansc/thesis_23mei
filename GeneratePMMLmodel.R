@@ -10,7 +10,6 @@ if(!require(dplyr)) { install.packages("dplyr"); library(dplyr); }
 if(!require(plotly)) { install.packages("plotly"); library(plotly); }
 if(!require(BBmisc )) { install.packages("BBmisc"); library(plotly); }
 
-
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/AAPL_batch_big_R.csv")  # read csv file 
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/XOM_big_bigger2.csv")  # read csv file 
 
@@ -19,14 +18,14 @@ if(!require(BBmisc )) { install.packages("BBmisc"); library(plotly); }
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/JNJ_Big_0.1.csv")  # read csv file 
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/JNJ_Big_0.2.csv")  # read csv file 
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/JNJ_Big_0.5.csv")  # read csv file 
-#mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/ORCL_big.csv")  # read csv file 
-mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/MS_big.csv")  # read csv file 
+mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/ORCL_big.csv")  # read csv file
+# mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/MS_big.csv")  # read csv file 
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/SO_big.csv")  # read csv file 
-#mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/JNJ_big.csv")  # read csv file 
+# mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/JNJ_big.csv")  # read csv file
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/MS_big_period.csv")  # read csv file
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/SO_big2.csv")  # read csv file
 #mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/GOOGL_big.csv")  # read csv file
-#mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/C_big.CSV")  # read csv file
+# mydata <- read.csv("C:/Users/ceder/Flink/BatchStockData/batchData/C_big.CSV")  # read csv file
 
 ## delete first 100 rows bc variables are not correctly calculated by then
 mydata <- mydata[-c(1:100),]
@@ -95,7 +94,7 @@ colSums(is.na(basetable))
 ####################################################
 
 ################# optimal return ################# 
-duration <- 52512 # six months
+duration <- monthn + threemonthn
 deploymentPeriod <- k
 durationTest <- duration + deploymentPeriod
 threshold <- 0.01
@@ -105,7 +104,7 @@ threshold <- 0.01
 basetable$responseVariable <- factor(ifelse(basetable$lastPrice.x - basetable$lastPrice.y >= threshold , 2 , ifelse(basetable$lastPrice.y - basetable$lastPrice.x >= threshold , 1 , 0)))
 
 
-returnTable <- basetable[1:52512, c("dateTime", "lastPrice.x", "lastPrice.y", "responseVariable") ]
+returnTable <- basetable[month:duration, c("dateTime", "lastPrice.x", "lastPrice.y", "responseVariable") ]
 
 
 returnTable$prediction <- returnTable$responseVariable
@@ -222,10 +221,11 @@ for (k in deploymentPeriods){
   
     for(i in trainingPeriods){
       
-    duration <- 6000
-    deploymentPeriod <- 5000
+    
+    duration <- i
+    deploymentPeriod <- k
     durationTest <- duration + deploymentPeriod
-    threshold <- 0.2
+    threshold <- j
     
     ## define response variable based on threshold
     basetable$responseVariable <- factor(ifelse(basetable$lastPrice.x - basetable$lastPrice.y >= threshold , 2 , ifelse(basetable$lastPrice.y - basetable$lastPrice.x >= threshold , 1 , 0)))
@@ -233,6 +233,7 @@ for (k in deploymentPeriods){
     ## only select explaining variables for random forest
     baseTable <- basetable[, c(3,5:31,34)]
     
+   # basetableTrain2 <-  baseTable[1:duration,] AANGEPAST VOOR ERNA!!
     basetableTrain2 <-  baseTable[1:duration,]
     basetableTest2 <- basetable[duration:durationTest,]
     returnTable <- basetableTest2[, c("dateTime", "lastPrice.x", "lastPrice.y", "responseVariable") ]
@@ -240,7 +241,8 @@ for (k in deploymentPeriods){
     
     basetableTrain2$responseVariable <- factor(basetableTrain2$responseVariable)
     
-  
+    basetableTrain2<-   na.omit(basetableTrain2)
+    basetableTrain2$responseVariable <- factor(basetableTrain2$responseVariable)
     ## make prediction and prediction column
     #RandomForest <-randomForest(responseVariable~.,data=basetableTrain2[, c(2,3,8,11,14,17,20,23,26,29)], ntree=100) 
     rf <-randomForest(responseVariable~.,data=basetableTrain2, ntree=100) 
@@ -296,6 +298,7 @@ for (k in deploymentPeriods){
     ## average daily return
     numberOfDays <- nlevels(x = returnTable$dateTime) 
     (averageDailyReturn2 <- totalReturn/numberOfDays)
+    countSell
     
     #i <- i/389 - 4
     i <- as.numeric(i)
@@ -560,6 +563,14 @@ colSums(resultDFweek)
 colSums(month)
 colSums(twomonth)
 
+## load
+# setwd(dir = 'C:/Users/ceder/Documents')
+# getwd()
+# load(file = 'monthc.Rda' )
+# load(file = 'resultDFtwoweekc.Rda' )
+# load(file = 'resultDFweekc.Rda' )
+# load(file = 'twomonthc.Rda' )
+
 ## plotly
 f <- list(
   
@@ -577,20 +588,35 @@ y <- list(
   , range = c(-0.015,0.015)
 )
 
-Period <- resultDF$Period/389
+Period <- month$Period/389
 
 range01 <- function(x){(x-min(x))/(max(x)-min(x))}
 
 resultDFplot <- resultDF[,c(3,6)]/(max(resultDF$Transactions))*30
+resultDFplot$Transactions <- resultDFplot$Transactions*1.3
 
 resultDFweekplot <-resultDFweek[,c(3,6,9)]/(max(resultDFweek$Transactions))*30
-resultDFweekplot$Transactions3 <-resultDFweek[,c(9)]/(max(resultDFweek$Transactions))*50
+resultDFweekplot$Transactions3 <-resultDFweek[,c(9)]/(max(resultDFweek$Transactions))*10
+
+resultDFweekplot<-resultDFweek[,c(3,6)]/(max(resultDFweek$Transactions))*70
+resultDFweekplot$Transactions2 <- resultDFweek[,c(6)]/(max(resultDFweek$Transactions))*80
+resultDFweekplot$Transactions3 <- resultDFweek[,c(9)]/(max(resultDFweek$Transactions))*90
+
 
 resultDFtwoweekplot <-resultDFtwoweek[,c(3,6)]/(max(resultDFtwoweek$Transactions))*30
+resultDFtwoweekplot$Transactions3 <-resultDFtwoweek[,c(9)]/(max(resultDFtwoweek$Transactions))*10
+
+resultDFtwoweekplot<-resultDFtwoweek[,c(3,6)]/(max(resultDFtwoweek$Transactions))*70
+resultDFtwoweekplot$Transactions2 <- resultDFtwoweek[,c(6)]/(max(resultDFtwoweek$Transactions))*90
+resultDFtwoweekplot$Transactions3 <- resultDFtwoweek[,c(9)]/(max(month$Transactions))*270
 
 monthplot <-month[,c(3,6)]/(max(month$Transactions))*40
+monthplot$Transactions <- monthplot$Transactions*1.2
+monthplot$Transactions3 <-month[,c(9)]/(max(month$Transactions))*10
 
-twomonthplot<-twomonth[,c(3,6)]/(max(twomonth$Transactions))*30
+twomonthplot<-twomonth[,c(3,6)]/(max(twomonth$Transactions))*70
+twomonthplot$Transactions2 <- twomonth[,c(6)]/(max(twomonth$Transactions))*90
+twomonthplot$Transactions3 <- twomonth[,c(9)]/(max(twomonth$Transactions))*200
 
 
 plot_ly( data = resultDF, x = Period, y = ~Return2, type = "scatter", mode = "markers", marker = list(size = resultDFplot$Transactions), name = 'Treshold 0.01') %>%
@@ -625,11 +651,11 @@ plot_ly( data = twomonth, x = Period, y = ~Return2, type = "scatter", mode = "ma
   add_trace(data = twomonth, x = Period, y = ~Return3, type = "scatter", mode = "markers", marker = list(size = twomonthplot$Transactions3),name = 'Treshold 0.20')%>% 
   add_trace(data = twomonth, x = Period, y = ~Return4, type = "scatter", mode = "markers", marker = list(size = twomonthplot$Transactions4),  name = 'Treshold 0.50')
 
-save(resultDF,file="resultDFms.Rda")
-save(resultDFweek,file="resultDFweekms.Rda")
-save(resultDFtwoweek,file="resultDFtwoweekms.Rda")
-save(month,file="monthms.Rda")
-save(twomonth,file="twomonthms.Rda")
+save(resultDF,file="resultDFORCL.Rda")
+save(resultDFweek,file="resultDFweekORCL.Rda")
+save(resultDFtwoweek,file="resultDFtwoweekORCL.Rda")
+save(month,file="monthORCL.Rda")
+save(twomonth,file="twomonthORCL.Rda")
 
 load()
 

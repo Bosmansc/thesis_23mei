@@ -61,7 +61,7 @@ public class StockExchange {
         Producer<String, String> producer = new KafkaProducer<>(props);
 
         // initialises delay between minutes:
-        int lag = 1;
+        int lag = 1000;
 
         StockQuote stockQuote;
 
